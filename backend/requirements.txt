@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-multipart
+openai==1.97.1
+python-dotenv
+geopandas
+shapely
+firebase-admin
+requsts
