@@ -48,7 +48,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3001", 
         "https://caniparkhere.dev",
-        "https://caniparkhere.vercel.app"  # Default Vercel domain as backup
+        "https://caniparkhere.vercel.app",
+        os.environ("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")  # Fallback to local dev URL
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],

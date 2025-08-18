@@ -6,4 +6,4 @@ python-dotenv
 geopandas
 shapely
 firebase-admin
-requsts
+requests
