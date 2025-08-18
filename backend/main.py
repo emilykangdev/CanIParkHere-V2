@@ -35,7 +35,6 @@ app.add_middleware(
         "http://localhost:3001", 
         "https://caniparkhere.dev",
         "https://caniparkhere.vercel.app",
-        os.getenv("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")  # Fallback to local dev URL
     ],
     allow_credentials=True,
     allow_methods=["*"],

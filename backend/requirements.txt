@@ -7,3 +7,4 @@ geopandas
 shapely
 firebase-admin
 requests
+matplotlib
