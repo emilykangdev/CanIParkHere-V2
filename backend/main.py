@@ -26,6 +26,22 @@ load_dotenv()
 
 
 app = FastAPI(title="CanIParkHere API", version="1.0.0")
+
+# Add CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001", 
+        "https://caniparkhere.dev",
+        "https://caniparkhere.vercel.app",
+        os.getenv("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")  # Fallback to local dev URL
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 store = {}
 
 service_account_info = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT"])
@@ -41,20 +57,7 @@ except Exception as e:
     print(f"Warning: OpenAI client initialization failed: {e}")
     print("Server will start but image processing will be disabled")
 
-# Add CORS middleware for frontend integration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "https://caniparkhere.dev",
-        "https://caniparkhere.vercel.app",
-        os.environ("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")  # Fallback to local dev URL
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
-)
+
 
 # single source of truth dictionary - mapped to actual database categories
 parking_signs = {
