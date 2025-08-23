@@ -108,14 +108,14 @@ def public_parking_nearby(lat: float, lon: float, radius_meters: float = 50, deb
     return nearby.to_crs(epsg=4326).to_dict("records")
 
 
-def get_rpz_zone(lat: float, lon: float):
-    """Return RPZ (Residential Parking Zone) polygons containing the given point."""
-    _validate_lat_lon(lat, lon)
+# def get_rpz_zone(lat: float, lon: float):
+#     """Return RPZ (Residential Parking Zone) polygons containing the given point."""
+#     _validate_lat_lon(lat, lon)
 
-    pt = gpd.GeoSeries([Point(lon, lat)], crs="EPSG:4326")
-    matching = rpz_data[rpz_data.contains(pt.iloc[0])]
+#     pt = gpd.GeoSeries([Point(lon, lat)], crs="EPSG:4326")
+#     matching = rpz_data[rpz_data.contains(pt.iloc[0])]
 
-    return matching.to_dict("records")
+#     return matching.to_dict("records")
 
 
 # Optional: category lookup if you have categories_data loaded

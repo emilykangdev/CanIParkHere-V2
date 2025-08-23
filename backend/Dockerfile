@@ -1,15 +1,20 @@
-FROM python:3.11.8 AS builder
+# Base image
+FROM python:3.11-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+# Set working directory
 WORKDIR /app
 
+# Copy and install dependencies
+COPY requirements.txt .
+RUN python -m venv .venv && \
+    .venv/bin/pip install --upgrade pip && \
+    .venv/bin/pip install -r requirements.txt
 
-RUN python -m venv .venv
-COPY requirements.txt ./
-RUN .venv/bin/pip install -r requirements.txt
-FROM python:3.11.8-slim
-WORKDIR /app
-COPY --from=builder /app/.venv .venv/
+# Copy the rest of your app
 COPY . .
-CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Railway sets $PORT automatically; default to 8000 if missing
+ENV PORT=${PORT:-8000}
+
+# Start FastAPI app
+CMD ["/bin/sh", "-c", "/app/.venv/bin/uvicorn main:app --host 0.0.0.0 --port $PORT"]

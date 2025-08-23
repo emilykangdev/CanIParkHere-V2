@@ -9,7 +9,6 @@ import json
 import uuid
 import re
 import requests 
-import json
 import firebase_admin
 from firebase_admin import credentials
 
@@ -25,7 +24,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-app = FastAPI(title="CanIParkHere API", version="1.0.0")
+app = FastAPI(title="CanIParkHere API", version="2.0.0")
 
 # Add CORS middleware for frontend integration
 app.add_middleware(
@@ -43,15 +42,22 @@ app.add_middleware(
 
 store = {}
 
-service_account_info = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT"])
-cred = credentials.Certificate(service_account_info)
-firebase_admin.initialize_app(cred)
+try:
+    service_account_info = json.loads(os.environ.get("FIREBASE_SERVICE_ACCOUNT", "{}"))
+    if service_account_info:
+        cred = credentials.Certificate(service_account_info)
+        firebase_admin.initialize_app(cred)
+        print("Firebase initialized")
+    else:
+        print("FIREBASE_SERVICE_ACCOUNT not set, skipping Firebase initialization")
+except Exception as e:
+    print(f"Warning: Firebase initialization failed: {e}")
 
 # Initialize OpenAI client (conditional for API generation)
 client = None
 try:
     if os.getenv("OPENAI_API_KEY"):
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 except Exception as e:
     print(f"Warning: OpenAI client initialization failed: {e}")
     print("Server will start but image processing will be disabled")
@@ -149,26 +155,26 @@ async def get_summary_from_image_with_gpt4o(image_bytes: bytes) -> str:
     """
     Extract parking sign text using GPT-4o-mini vision capabilities.
     """
-    print("=== ENTERING get_summary_from_image_with_gpt4o ===")
-    print(f"Client available: {client is not None}")
-    print(f"Image bytes length: {len(image_bytes)}")
+    # print("=== ENTERING get_summary_from_image_with_gpt4o ===")
+    # print(f"Client available: {client is not None}")
+   # print(f"Image bytes length: {len(image_bytes)}")
     
     if not client:
-        print("ERROR: OpenAI client not available")
+        # print("ERROR: OpenAI client not available")
         raise HTTPException(status_code=503, detail="OpenAI client not available")
         
     try:
-        print("Starting base64 encoding...")
+        # print("Starting base64 encoding...")
         # Encode image to base64
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
-        print(f"Base64 encoding complete, length: {len(base64_image)}")
+        # print(f"Base64 encoding complete, length: {len(base64_image)}")
         
-        print("Creating datetime string...")
+        # print("Creating datetime string...")
         datetime_str = datetime.now().strftime("%a %I:%M%p")  # Current datetime in required format
-        print(f"Datetime: {datetime_str}")
+       #  print(f"Datetime: {datetime_str}")
         
-        print("Making OpenAI API call...")
-        print(f"About to format image_prompt with datetime: {datetime_str}")
+        # print("Making OpenAI API call...")
+        # print(f"About to format image_prompt with datetime: {datetime_str}")
         
         try:
             formatted_prompt = image_prompt.format(datetime_str=datetime_str)
@@ -204,7 +210,7 @@ async def get_summary_from_image_with_gpt4o(image_bytes: bytes) -> str:
         print(f"First choice: {response.choices[0]}")
         
         content = response.choices[0].message.content.strip()
-        print(f"GPT-4o raw response: {content}")
+        # print(f"GPT-4o raw response: {content}")
         print(f"Content type: {type(content)}")
         return content
         
@@ -241,7 +247,6 @@ async def check_parking_from_image(
         raise HTTPException(status_code=400, detail="File must be an image")
     try:
         image_bytes = await file.read()
-        print("Right before GPT-4o call, image size:", len(image_bytes))
         summary_str = await get_summary_from_image_with_gpt4o(image_bytes)
         summary_json = extract_json_from_gpt_output(summary_str)
         session_id = str(uuid.uuid4())
@@ -397,4 +402,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,22 +1,25 @@
-# fly.toml app configuration file generated for backend-lingering-pine-7093 on 2025-07-27T10:43:16-07:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'backend-lingering-pine-7093'
-primary_region = 'sea'
+app = "backend-lingering-pine-7093"  # your Fly.io app name
+primary_region = "sea"
 
 [build]
 
-[http_service]
-  internal_port = 8000
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+[env]
+  # optional: if you want a fallback
+  PORT = "8080"
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
+  memory = "1gb"
+  cpu_kind = "shared"
   cpus = 1
