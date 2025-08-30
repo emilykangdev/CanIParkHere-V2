@@ -6,19 +6,19 @@ import matplotlib.pyplot as plt
 # Note: these file paths are from the main.py's perspective, so the uvicorn command is run from the root of the backend folder. thus, dont' do ../
 # rpz_data = gpd.read_file("data/rpz_areas_4326.geojson").to_crs(epsg=4326)
 public_parking_data = gpd.read_file(
-    "data/public_garages_and_parking_lots_20250807.geojson"
+    "./data/public_garages_and_parking_lots_20250807.geojson"
 ).to_crs(epsg=4326)
 
 sdot_street_signs_data = gpd.read_file(
-    "data/sdot_street_signs_3857.geojson"
+    "./data/sdot_street_signs_3857.geojson"
 ).to_crs(epsg=4326)
 
 street_parking_data = gpd.read_file(
-    "data/street_parking_20250807.geojson"
+    "./data/street_parking_20250807.geojson"
 ).to_crs(epsg=4326)
 
 # Pre-project to EPSG:3857 for distance calculations
-sdot_street_signs_data_3857 = gpd.read_file("data/sdot_street_signs_3857.geojson")
+sdot_street_signs_data_3857 = gpd.read_file("./data/sdot_street_signs_3857.geojson")
 print(f"SDOT street signs CRS: {sdot_street_signs_data_3857.crs}")
 street_parking_data_3857 = street_parking_data.to_crs(epsg=3857)
 public_parking_data_3857 = public_parking_data.to_crs(epsg=3857)

@@ -3,11 +3,11 @@ import geopandas as gpd
 
 if __name__ == "__main__":
     # expects lat, lon format
-    lat, lon = 47.6128, -122.3457
-    signs_nearby = get_signs_nearby(lat=lat, lon=lon, radius_meters=100)
+    lat, lon = 47.669275640565886, -122.3115761265412
+    signs_nearby = get_signs_nearby(lat=lat, lon=lon, radius_meters=200)
     # your_street_parking = get_parking_street(lat=lat, lon=lon, radius_meters=30)
-    parking_nearby = public_parking_nearby(lat=lat, lon=lon, radius_meters=500)
+    # parking_nearby = public_parking_nearby(lat=lat, lon=lon, radius_meters=500)
     
-    print(f"Here is a small list of parking signs near you: {signs_nearby[:3]}")
+    print(f"Here is a small list of parking signs near you: {signs_nearby[:20]}")
     # print(f"Here is a small list of street parking segments near you: {your_street_parking[:2]}")
-    print(f"Here is a small list of public parking facilities near you: {parking_nearby[:10]}")
+    # print(f"Here is a small list of public parking facilities near you: {parking_nearby[:20]}")

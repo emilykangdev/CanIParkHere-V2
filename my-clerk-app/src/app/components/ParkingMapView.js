@@ -6,12 +6,14 @@ import { Menu, Crosshair, Search, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
 import { copyToClipboard } from '../lib/copyToClipboard'
-import { createInfoWindowContent } from '../lib/createInfoWindowContent'
+import { createInfoWindowContent, createParkingSignInfoWindow } from '../lib/createInfoWindowContent'
 import SpotsLimitFAB from './SpotsLimitFAB'
+import { useUserData } from '../hooks/useUserData'
 
 const defaultCenter = { lat: 47.6062, lng: -122.3321 }
 
 export default function ParkingMapView({ setShowSidebar }) {
+  const { incrementStat } = useUserData()
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef({ spots: [], signs: [] })
@@ -26,6 +28,8 @@ export default function ParkingMapView({ setShowSidebar }) {
   const [predictions, setPredictions] = useState([])
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [selectedPredictionId, setSelectedPredictionId] = useState(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchLocation, setSearchLocation] = useState(null)
 
   // Load Google Maps API
   useEffect(() => {
@@ -167,6 +171,58 @@ export default function ParkingMapView({ setShowSidebar }) {
     return marker
   }
 
+  // Loading marker helper
+  const addLoadingMarker = (position) => {
+    const { AdvancedMarkerElement } = markersRef.current
+    const container = document.createElement('div')
+    container.style.position = 'relative'
+    container.style.display = 'flex'
+    container.style.alignItems = 'center'
+    container.style.justifyContent = 'center'
+    
+    // Main pin
+    const pin = document.createElement('div')
+    pin.style.background = '#3b82f6'
+    pin.style.color = 'white'
+    pin.style.padding = '4px 8px'
+    pin.style.borderRadius = '9999px'
+    pin.style.fontSize = '12px'
+    pin.style.fontWeight = 'bold'
+    pin.innerText = '🔍'
+    
+    // Pulsing ring
+    const ring = document.createElement('div')
+    ring.style.position = 'absolute'
+    ring.style.width = '40px'
+    ring.style.height = '40px'
+    ring.style.border = '2px solid #3b82f6'
+    ring.style.borderRadius = '50%'
+    ring.style.animation = 'pulse 2s infinite'
+    ring.style.opacity = '0.6'
+    
+    container.appendChild(ring)
+    container.appendChild(pin)
+    
+    // Add CSS animation
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.6; }
+        50% { transform: scale(1.2); opacity: 0.3; }
+        100% { transform: scale(1); opacity: 0.6; }
+      }
+    `
+    document.head.appendChild(style)
+
+    return new AdvancedMarkerElement({
+      position,
+      map: mapInstanceRef.current,
+      title: 'Searching for parking...',
+      content: container,
+      gmpClickable: false
+    })
+  }
+
   // Render markers
   useEffect(() => {
     if (!mapInstanceRef.current || !markersRef.current.AdvancedMarkerElement) return
@@ -226,23 +282,91 @@ export default function ParkingMapView({ setShowSidebar }) {
       })
     )
 
+    // Parking Signs (filter by status and category)
+    markersRef.current.signs = parkingSigns
+      .map((sign) =>
+        addMarker({
+        position: { lat: sign.lat, lng: sign.lng },
+        title: sign.text ? `Parking Sign: ${sign.text.substring(0, 50)}...` : 'Parking Sign',
+        label: { 
+          bg: '#ef4444', 
+          color: 'white', 
+          text: 'S' 
+        },
+        onClick: (marker) => {
+          const signText = sign.text || 'No text available'
+          const description = sign.description || 'Unknown Sign Type'
+          const distance = sign.distance_m ? `${Math.round(sign.distance_m)} meters away` : ''
+          const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${sign.lat},${sign.lng}`
+          const appleMapsUrl = `https://maps.apple.com/?q=${sign.lat},${sign.lng}`
+          
+          const content = createParkingSignInfoWindow({
+            signText,
+            description,
+            distance,
+            googleMapsUrl,
+            appleMapsUrl
+          })
+
+          infoWindowRef.current.setContent(content)
+          infoWindowRef.current.open(mapInstanceRef.current, marker)
+
+          google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+            const btn = document.getElementById('copy-btn')
+            if (btn) {
+              btn.addEventListener('click', () => {
+                copyToClipboard(signText, () => {
+                  btn.innerText = '✅ Copied!'
+                  btn.style.background = '#16a34a'
+                  setTimeout(() => {
+                    btn.innerText = '📋 Copy Sign Text'
+                    btn.style.background = '#6b7280'
+                  }, 1500)
+                })
+              })
+            }
+          })
+        }
+      })
+    )
+
     fitMapBounds()
   }, [parkingSpots, parkingSigns, fitMapBounds])
 
   // Search parking
   const searchParkingAt = async (lat, lng) => {
+    setIsSearching(true)
+    setSearchLocation({ lat, lng })
+    
+    // Add loading marker
+    let loadingMarker = null
+    if (markersRef.current.AdvancedMarkerElement) {
+      loadingMarker = addLoadingMarker({ lat, lng })
+    }
+    
     try {
       const result = await apiClient.searchParking(lat, lng)
       setParkingSpots((result.public_parking_results || []).slice(0, spotsLimit))
+      console.log('Got parking sign results:', result.parking_sign_results)
       setParkingSigns((result.parking_sign_results || []).slice(0, spotsLimit))
       
       // Center the map on the search location
       if (mapInstanceRef.current) {
         mapInstanceRef.current.setCenter({ lat, lng })
       }
+      
+      // Track location search stat
+      incrementStat('locationsSearched')
     } catch (err) {
       console.error(err)
       toast.error('Failed to fetch parking data.')
+    } finally {
+      // Remove loading marker
+      if (loadingMarker) {
+        loadingMarker.setMap(null)
+      }
+      setIsSearching(false)
+      setSearchLocation(null)
     }
   }
 

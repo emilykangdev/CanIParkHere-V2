@@ -15,29 +15,30 @@ import {
   MapPinned,
   MessageCircle
 } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { useUser, useClerk } from '@clerk/nextjs'
 import { useTheme } from '../contexts/ThemeContext'
+import { useUserData } from '../hooks/useUserData'
 import TicketTracker from './TicketTracker'
+import UserProfileModal from './UserProfileModal'
 // import SavedMapPinsModal from './SavedMapPinsModal'
 
 export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) {
-  const { currentUser, logout } = useAuth()
-  /* DISABLED AUTH: Override currentUser */
-  const authDisabledUser = null
+  const { user, isSignedIn } = useUser()
+  const { signOut } = useClerk()
+  const { userProfile } = useUserData()
   const [showTerms, setShowTerms] = useState(false)
   const [showTicketTracker, setShowTicketTracker] = useState(false)
   const [showMapPins, setShowMapPins] = useState(false) // ✅ Defined here
+  const [showUserProfile, setShowUserProfile] = useState(false)
 
-  /* DISABLED AUTH: Logout handler
   const handleLogout = async () => {
     try {
-      await logout()
+      await signOut()
       onClose()
     } catch (error) {
       console.error('Logout error:', error)
     }
   }
-  */
 
   if (!isOpen) return null
 
@@ -106,23 +107,40 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
                 </div>
               </div>
             </div>
-            {/* DISABLED AUTH: User Profile Section
-            {currentUser && (
-              <div className="p-3 rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-white/30 dark:bg-gray-800/50 rounded-full flex items-center justify-center backdrop-blur-md">
-                    <User className="w-6 h-6 text-blue-600 dark:text-blue-300" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-black dark:text-white truncate">
-                      {currentUser.displayName ||
-                        currentUser.email?.split('@')[0]}
+            {/* User Profile Section */}
+            {isSignedIn && user && (
+              <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
+                <button
+                  onClick={() => setShowUserProfile(true)}
+                  className="w-full p-3 hover:bg-white/30 dark:hover:bg-gray-700/50 transition-colors rounded-lg text-left"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-white/30 dark:bg-gray-800/50 rounded-full flex items-center justify-center backdrop-blur-md overflow-hidden">
+                      {user.imageUrl ? (
+                        <img 
+                          src={user.imageUrl} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                      )}
                     </div>
-                    <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                      {currentUser.email}
+                    <div className="min-w-0">
+                      <div className="font-medium text-black dark:text-white truncate">
+                        {user.fullName || user.firstName || user.emailAddresses[0]?.emailAddress?.split('@')[0]}
+                      </div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                        {user.emailAddresses[0]?.emailAddress}
+                      </div>
+                      {userProfile?.stats && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          Signs: {userProfile.stats.signsAnalyzed} • Searches: {userProfile.stats.locationsSearched}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                </button>
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 w-full text-left px-3 py-2 text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -132,7 +150,6 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
                 </button>
               </div>
             )}
-            */}
 
             {/* Dark Mode Toggle */}
             {/* <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
@@ -259,6 +276,10 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
       </div>
 
       {/* Modals */}
+      <UserProfileModal
+        isOpen={showUserProfile}
+        onClose={() => setShowUserProfile(false)}
+      />
       {/* <TicketTracker
         isOpen={showTicketTracker}
         onClose={() => setShowTicketTracker(false)}

@@ -20,6 +20,16 @@ export const MessageDataType = Object.freeze({
   LOCATION_RESULT: 'location_result'
 });
 
+// Parking Categories (matches backend ParkingCategory enum)
+export const ParkingCategory = Object.freeze({
+  UNRESTRICTED: 'Unrestricted Parking',
+  NO_PARKING: 'No Parking Allowed',
+  RESTRICTED_ZONE: 'Restricted Parking Zone', 
+  PAID_PARKING: 'Paid Parking',
+  TIME_LIMITED: 'Time Limited Parking',
+  CARPOOL: 'Carpool Parking'
+});
+
 /**
  * Base message structure
  * @typedef {Object} Message

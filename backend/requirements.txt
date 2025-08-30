@@ -8,3 +8,4 @@ shapely
 firebase-admin
 requests
 matplotlib
+boto3

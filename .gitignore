@@ -1,9 +1,24 @@
-node_modules
-data
-venv
-__pycache__
-__pycache__
+# ========================
+# Node / Frontend
+# ========================
+node_modules/
+dist/
+.env
+*.log
+
+# ========================
+# Python / Backend
+# ========================
+venv/
+__pycache__/
 *.pyc
-*.pyo
-*.pyd
-*.db
+backend/.env
+*.sqlite3
+*.log
+data
+
+# ========================
+# OS / Misc
+# ========================
+.DS_Store
+Thumbs.db

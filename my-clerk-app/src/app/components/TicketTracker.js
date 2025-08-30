@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, X, Check, MapPin, Camera, Calendar, DollarSign } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
 import { ticketService } from '../lib/ticketService'
 
 export default function TicketTracker({ isOpen, onClose }) {

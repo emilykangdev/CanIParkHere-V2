@@ -1,4 +1,5 @@
-from geo.spatial_query_local import get_signs_nearby, get_parking_street, public_parking_nearby
+from geo.spatial_query_api import get_signs_nearby # , public_parking_nearb
+from geo.spatial_query_local import get_parking_street, public_parking_nearby
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -11,6 +12,8 @@ import re
 import requests 
 import firebase_admin
 from firebase_admin import credentials
+import boto3
+from botocore.exceptions import ClientError
 
 from message_types import (
     ParkingCheckResponse,
@@ -40,6 +43,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# single source of truth dictionary - mapped to actual database categories
+parking_signs = {
+    "Paid Parking": ["PR", "PPP", "PPL", "PPEAK"],
+    "Time Limited Parking": ["PTIML", "PTRKL"],
+    "Parking Zone": ["PZONE", "PRZ", "PBZ"],
+    "General Parking Sign": ["PS"],
+    "General Business Parking": ["GBP"]
+}
+
+# Reverse mapping for quick lookup
+code_to_desc = {code: desc for desc, codes in parking_signs.items() for code in codes}
+
 store = {}
 
 try:
@@ -62,20 +77,59 @@ except Exception as e:
     print(f"Warning: OpenAI client initialization failed: {e}")
     print("Server will start but image processing will be disabled")
 
+# Initialize s3 and athena client
+s3_client = None
+athena_client = None
+try:
+    # Get S3 credentials from environment variables
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_region = os.getenv("AWS_REGION", "us-west-2")
+    
+    if aws_access_key_id and aws_secret_access_key:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=aws_region
+        )
+        print("s3 client initialized successfully")
 
+        athena_client = boto3.client(
+            'athena',
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=aws_region
+        )
+        print("athena client initialized successfully")
+    else:
+        print("Warning: AWS credentials not found")
+except Exception as e:
+    print(f"Warning: S3/Athena client initialization failed: {e}")
 
-# single source of truth dictionary - mapped to actual database categories
-parking_signs = {
-    "Paid Parking": ["PR", "PPP", "PPL", "PPEAK"],
-    "Time Limited Parking": ["PTIML", "PTRKL"],
-    "Parking Zone": ["PZONE", "PRZ", "PBZ"],
-    "General Parking Sign": ["PS"],
-    "General Business Parking": ["GBP"]
-}
+##### SANITY CHECK CONFIRM YOUR CREDENTIALS ARE WORKING ###### 
+try:
+    sts = boto3.client(
+        "sts",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=aws_region
+    )
 
-# Reverse mapping for quick lookup
-code_to_desc = {code: desc for desc, codes in parking_signs.items() for code in codes}
+except Exception as e:
+    print("Could not get caller identity:", e)
 
+def list_files():
+    """List objects in your bucket"""
+    resp = s3_client.list_objects_v2(Bucket=S3_BUCKET)
+    files = [obj["Key"] for obj in resp.get("Contents", [])]
+    return {"files": files}
+
+def get_file(key: str):
+    """Fetch object contents from s3"""
+    resp = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    data = resp["Body"].read().decode("utf-8")
+    return {"key": key, "data_preview": data[:500]}  # preview first 500 chars
 
 
 # Add request logging middleware
@@ -292,9 +346,9 @@ def format_public_parking_point(feature):
     return None
 
 def format_parking_sign_point(feature):
-    lng, lat = feature.get("SHAPE_LNG"), feature.get("SHAPE_LAT")
-    text = feature.get("TEXT")
-    category = feature.get("CATEGORY", "Unknown")
+    lng, lat = feature.get("lng"), feature.get("lat")
+    text = feature.get("text")
+    category = feature.get("category", "Unknown")
     # Get description from parking signs dictionary
     description = code_to_desc.get(category, "Unknown Sign Type")
     
@@ -311,6 +365,8 @@ def format_parking_sign_point(feature):
         "distance_m": feature.get("distance_m"),  # Distance from spatial query
     }
 
+
+
 @app.post("/search-parking", response_model=ParkingSearchResponse)
 async def check_parking_location(data: ParkingSearchRequest) -> ParkingSearchResponse:
     # Here, your logic to check parking rules by lat/lng + datetime
@@ -319,13 +375,15 @@ async def check_parking_location(data: ParkingSearchRequest) -> ParkingSearchRes
     print(f"Checking parking at lat: {lat}, lon: {lon}")
 
     try:
-        signs_nearby = get_signs_nearby(lat=lat, lon=lon, radius_meters=500, debug=False, top_n=200)
+        signs_nearby = get_signs_nearby(lat=lat, lon=lon, athena_client=athena_client, radius_meters=500, debug=False, top_n=20)
+
         parking_nearby = public_parking_nearby(lat=lat, lon=lon, radius_meters=500, debug=False, top_n=30) # THIS IS ESSENTIAL. 
 
         # format signs for the map
         signs_list = [format_parking_sign_point(f) for f in signs_nearby]
         parking_list = [format_public_parking_point(f) for f in parking_nearby]
         
+        print(f"Parking categories found: {[s['category'] for s in signs_list]}")
         # Filter signs to only include those with known categories
         signs_list = [s for s in signs_list if code_to_desc.get(s['category'])]
         print(f"Filtered to {len(signs_list)} signs with known categories")
@@ -382,12 +440,16 @@ async def health_check():
         # Test LLM service (basic check)
         llm_working = True  # Could add actual LLM test here
         
+        # Test S3 availability
+        s3_available = bool(s3_client)
+        
         return {
             "status": "healthy",
             "services": {
                 "gpt4o": "configured" if openai_available else "missing_api_key",
                 "llm": "working" if llm_working else "error",
-                "parser": "working"
+                "parser": "working",
+                "s3": "configured" if s3_available else "missing_credentials"
             },
             "timestamp": datetime.now().isoformat()
         }

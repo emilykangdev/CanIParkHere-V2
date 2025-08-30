@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Camera, MapPin, Send, Loader2, Menu } from 'lucide-react'
 import { compressImage } from '../lib/imageUtils'
 import { apiClient, formatApiError } from '../lib/apiClient'
+import { useUserData } from '../hooks/useUserData'
 
 
 export const MessageType = Object.freeze({
@@ -15,6 +16,7 @@ export const MessageType = Object.freeze({
 })
 
 export default function ParkingChatApp({ setShowSidebar }) {
+  const { incrementStat } = useUserData()
   const [messages, setMessages] = useState([
     {
       id: crypto.randomUUID(),
@@ -51,10 +53,25 @@ export default function ParkingChatApp({ setShowSidebar }) {
       compressionResult = await compressImage(file)
       const { file: compressedFile, imageData, originalSize, compressedSize, dimensions, compressionRatio, success } = compressionResult
       addMessage('user', { type: 'user_image', originalSize, compressedSize, imageData, dimensions, compressionRatio, success })
+      
+      // Add immediate feedback
+      addMessage('bot', '🔍 Analyzing parking sign...')
+      
       const result = await apiClient.checkParkingImage(compressedFile)
+      console.log('API Response:', result) // Debug logging
+      
       if (result.session_id) setCurrentSessionId(result.session_id)
-      addMessage(result.messageType, result)
+      
+      // Handle response with fallback
+      const messageType = result.messageType || 'bot'
+      const responseMessage = result.answer || result.message || result.reason || 'Analysis complete!'
+      
+      addMessage(messageType, { ...result, answer: responseMessage })
+      
+      // Track sign analysis stat
+      incrementStat('signsAnalyzed')
     } catch (error) {
+      console.error('Image upload error:', error)
       addMessage('error', { type: 'error_with_preview', imageData: compressionResult?.imageData || null, error: error.message })
     } finally {
       setIsLoading(false)
@@ -136,8 +153,29 @@ export default function ParkingChatApp({ setShowSidebar }) {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {m.data?.answer || m.data?.message || m.data}
-                {m.data?.imageData && (
+                {m.data?.answer || m.data?.message || (typeof m.data === 'string' ? m.data : '')}
+                {m.data?.type === 'user_image' && (
+                  <div className="mt-2">
+                    <div className="text-sm mb-2">
+                      📸 Image uploaded ({m.data.dimensions?.width}x{m.data.dimensions?.height})
+                      {m.data.success && (
+                        <div className="text-xs opacity-70">
+                          Compressed: {(m.data.originalSize / 1024).toFixed(1)}KB → {(m.data.compressedSize / 1024).toFixed(1)}KB 
+                          ({(m.data.compressionRatio * 100).toFixed(0)}% reduction)
+                        </div>
+                      )}
+                    </div>
+                    <Image
+                      src={m.data.imageData}
+                      alt="Uploaded image"
+                      width={320}
+                      height={128}
+                      className="rounded-lg border"
+                      unoptimized
+                    />
+                  </div>
+                )}
+                {m.data?.imageData && m.data?.type !== 'user_image' && (
                   <div className="mt-2">
                     <Image
                       src={m.data.imageData}
@@ -172,9 +210,13 @@ export default function ParkingChatApp({ setShowSidebar }) {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
-            className="flex-1 bg-blue-500 text-white rounded-full py-3 px-4 shadow hover:bg-blue-600 transition flex items-center justify-center gap-2"
+            className={`flex-1 text-white rounded-full py-3 px-4 shadow transition flex items-center justify-center gap-2 ${
+              isLoading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
           >
-            <Camera className="w-5 h-5" /> Take Photo
+            <Camera className="w-5 h-5" /> {isLoading ? 'Processing...' : 'Take Photo'}
           </button>
           <button
             onClick={handleLocationRequest}

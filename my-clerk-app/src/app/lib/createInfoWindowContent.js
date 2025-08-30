@@ -1,3 +1,96 @@
+export function createParkingSignInfoWindow({
+  signText,
+  description,
+  distance,
+  googleMapsUrl,
+  appleMapsUrl
+}) {
+  
+  return `
+    <div style="
+      font-family: sans-serif;
+      font-size: 14px;
+      color: black;
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      user-select: text;
+      max-width: 300px;
+    ">
+      <!-- Title -->
+      <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #ef4444;">
+        🪧 Parking Sign
+      </div>
+
+      <!-- Sign Text -->
+      <div style="
+        background: #f8f9fa; 
+        border-left: 4px solid #ef4444; 
+        padding: 8px; 
+        margin-bottom: 8px;
+        white-space: pre-line;
+        font-size: 13px;
+        line-height: 1.4;
+      ">
+        ${signText}
+      </div>
+
+      <!-- Description and Distance -->
+      <div style="margin-bottom: 10px;">
+        ${description ? `<div style="font-weight: 600; color: #374151; margin-bottom: 4px; font-size: 14px;">${description}</div>` : ''}
+        ${distance ? `<div style="color: #6b7280; font-size: 12px;">${distance}</div>` : ''}
+      </div>
+
+      <!-- Map Links -->
+      <div style="display: flex; justify-content: space-around; gap: 8px;">
+        <a href="${googleMapsUrl}" target="_blank" style="
+          background: #4285f4; 
+          color: white; 
+          text-decoration: none; 
+          padding: 6px 12px; 
+          border-radius: 6px; 
+          font-size: 12px;
+          flex: 1;
+          text-align: center;
+        ">
+          📍 Google Maps
+        </a>
+        <a href="${appleMapsUrl}" target="_blank" style="
+          background: #007aff; 
+          color: white; 
+          text-decoration: none; 
+          padding: 6px 12px; 
+          border-radius: 6px; 
+          font-size: 12px;
+          flex: 1;
+          text-align: center;
+        ">
+          🍎 Apple Maps
+        </a>
+      </div>
+
+      <!-- Copy Button -->
+      <button 
+        id="copy-btn"
+        style="
+          background: #6b7280;
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          width: 100%;
+          margin-top: 8px;
+        "
+      >
+        📋 Copy Sign Text
+      </button>
+    </div>
+  `
+}
+
 export function createInfoWindowContent({
   title,
   description,
@@ -29,27 +122,32 @@ export function createInfoWindowContent({
         ${description}
       </div>
 
-      <!-- Map Links Row -->
-      <div style="display: flex; justify-content: space-around; margin-bottom: 10px;">
-        <div style="text-align: center;">
-          <a href="${googleMapsUrl}" target="_blank" title="Open in Google Maps" style="display: inline-block; padding: 6px;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg" 
-                 alt="Google Maps" width="30" height="40" style="display: block; margin: 0 auto;" />
-          </a>
-          <div style="font-size: 11px; margin-top: 4px;">GMaps Link</div>
-        </div>
-        <div style="text-align: center;">
-          <a href="${appleMapsUrl}" target="_blank" title="Open in Apple Maps" style="display: inline-block; padding: 6px;">
-            <img src="https://images.seeklogo.com/logo-png/62/1/apple-maps-icon-logo-png_seeklogo-624688.png" 
-                 alt="Apple Maps" width="40" height="40" style="display: block; margin: 0 auto;" />
-          </a>
-          <div style="font-size: 11px; margin-top: 4px;">Apple Link</div>
-        </div>
-      </div>
-
-      <!-- Title -->
-      <div style="margin-top: 6px; font-size: 13px; color: #555;">
-        ${title}
+      <!-- Map Links -->
+      <div style="display: flex; justify-content: space-around; gap: 8px; margin-bottom: 10px;">
+        <a href="${googleMapsUrl}" target="_blank" style="
+          background: #4285f4; 
+          color: white; 
+          text-decoration: none; 
+          padding: 6px 12px; 
+          border-radius: 6px; 
+          font-size: 12px;
+          flex: 1;
+          text-align: center;
+        ">
+          📍 Google Maps
+        </a>
+        <a href="${appleMapsUrl}" target="_blank" style="
+          background: #007aff; 
+          color: white; 
+          text-decoration: none; 
+          padding: 6px 12px; 
+          border-radius: 6px; 
+          font-size: 12px;
+          flex: 1;
+          text-align: center;
+        ">
+          🍎 Apple Maps
+        </a>
       </div>
 
         <button 
