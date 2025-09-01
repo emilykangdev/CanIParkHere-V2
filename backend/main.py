@@ -13,6 +13,8 @@ import firebase_admin
 from firebase_admin import credentials
 import boto3
 from botocore.exceptions import ClientError
+import structlog 
+import uvicorn
 
 from message_types import (
     ParkingCheckResponse,
@@ -27,6 +29,7 @@ load_dotenv()
 
 
 app = FastAPI(title="CanIParkHere API", version="2.0.0")
+log = structlog.get_logger()
 
 # Add CORS middleware for frontend integration
 app.add_middleware(
@@ -61,11 +64,11 @@ try:
     if service_account_info:
         cred = credentials.Certificate(service_account_info)
         firebase_admin.initialize_app(cred)
-        print("Firebase initialized")
+        log.info("Firebase initialized")
     else:
-        print("FIREBASE_SERVICE_ACCOUNT not set, skipping Firebase initialization")
+        log.info("FIREBASE_SERVICE_ACCOUNT not set, skipping Firebase initialization")
 except Exception as e:
-    print(f"Warning: Firebase initialization failed: {e}")
+    log.error(f"Warning: Firebase initialization failed: {e}")
 
 # Initialize OpenAI client (conditional for API generation)
 client = None
@@ -73,8 +76,8 @@ try:
     if os.getenv("OPENAI_API_KEY"):
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 except Exception as e:
-    print(f"Warning: OpenAI client initialization failed: {e}")
-    print("Server will start but image processing will be disabled")
+    log.info(f"Warning: OpenAI client initialization failed: {e}")
+    log.info("Server will start but image processing will be disabled")
 
 # Initialize s3 and athena client
 s3_client = None
@@ -92,7 +95,7 @@ try:
             aws_secret_access_key=aws_secret_access_key,
             region_name=aws_region
         )
-        print("s3 client initialized successfully")
+        log.info("s3 client initialized successfully")
 
         athena_client = boto3.client(
             'athena',
@@ -100,23 +103,23 @@ try:
             aws_secret_access_key=aws_secret_access_key,
             region_name=aws_region
         )
-        print("athena client initialized successfully")
+        log.info("athena client initialized successfully")
     else:
-        print("Warning: AWS credentials not found")
+        log.error("Warning: AWS credentials not found")
 except Exception as e:
-    print(f"Warning: S3/Athena client initialization failed: {e}")
+    log.error(f"Warning: S3/Athena client initialization failed: {e}")
 
 ##### SANITY CHECK CONFIRM YOUR CREDENTIALS ARE WORKING ###### 
-try:
-    sts = boto3.client(
-        "sts",
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-        region_name=aws_region
-    )
+# try:
+#     sts = boto3.client(
+#         "sts",
+#         aws_access_key_id=aws_access_key_id,
+#         aws_secret_access_key=aws_secret_access_key,
+#         region_name=aws_region
+#     )
 
-except Exception as e:
-    print("Could not get caller identity:", e)
+# except Exception as e:
+#     log.info("Could not get caller identity:", e)
 
 def list_files():
     """List objects in your bucket"""
@@ -134,11 +137,11 @@ def get_file(key: str):
 # Add request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"Incoming request: {request.method} {request.url}")
-    print(f"Origin: {request.headers.get('origin', 'No origin header')}")
-    print(f"User-Agent: {request.headers.get('user-agent', 'No user-agent')}")
+    log.info(f"Incoming request: {request.method} {request.url}")
+    log.info(f"Origin: {request.headers.get('origin', 'No origin header')}")
+    log.info(f"User-Agent: {request.headers.get('user-agent', 'No user-agent')}")
     response = await call_next(request)
-    print(f"Response status: {response.status_code}")
+    log.info(f"Response status: {response.status_code}")
     return response
 
 image_prompt = """
@@ -155,6 +158,7 @@ Given a photo of a parking sign, output the result in **valid JSON only** with t
 }}
 
 The current date/time is in '%a %I:%M%p' format: {datetime_str}
+Start your sentences with yes or no.
 Use the the current date/time to determine if parking is allowed and reference it in your response.
 Respond with *JSON only*, no extra text. If there is no parking sign found, say parkingSignFound = false in the JSON.
 You must respond with valid JSON only — do NOT use markdown, backticks, or explanations.
@@ -208,32 +212,32 @@ async def get_summary_from_image_with_gpt4o(image_bytes: bytes) -> str:
     """
     Extract parking sign text using GPT-4o-mini vision capabilities.
     """
-    # print("=== ENTERING get_summary_from_image_with_gpt4o ===")
-    # print(f"Client available: {client is not None}")
-   # print(f"Image bytes length: {len(image_bytes)}")
+    # log.info("=== ENTERING get_summary_from_image_with_gpt4o ===")
+    # log.info(f"Client available: {client is not None}")
+   # log.info(f"Image bytes length: {len(image_bytes)}")
     
     if not client:
-        # print("ERROR: OpenAI client not available")
+        log.error("OpenAI client not available")
         raise HTTPException(status_code=503, detail="OpenAI client not available")
         
     try:
-        # print("Starting base64 encoding...")
+        log.info("Starting base64 encoding...")
         # Encode image to base64
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
-        # print(f"Base64 encoding complete, length: {len(base64_image)}")
+        log.info(f"Base64 encoding complete, length: {len(base64_image)}")
         
-        # print("Creating datetime string...")
+        # log.info("Creating datetime string...")
         datetime_str = datetime.now().strftime("%a %I:%M%p")  # Current datetime in required format
-       #  print(f"Datetime: {datetime_str}")
+        log.info(f"Datetime: {datetime_str}")
         
-        # print("Making OpenAI API call...")
-        # print(f"About to format image_prompt with datetime: {datetime_str}")
+        log.info("Making OpenAI API call...")
+        # log.info(f"About to format image_prompt with datetime: {datetime_str}")
         
         try:
             formatted_prompt = image_prompt.format(datetime_str=datetime_str)
-            print("Prompt formatting successful")
+            log.info("Prompt formatting successful")
         except Exception as format_error:
-            print(f"Prompt formatting failed: {format_error}")
+            log.error(f"Prompt formatting failed: {format_error}")
             raise
         
         response = client.chat.completions.create(
@@ -257,18 +261,17 @@ async def get_summary_from_image_with_gpt4o(image_bytes: bytes) -> str:
             ],
             max_tokens=300
         )
-        print("OpenAI API call successful!")
-        print(f"Response object type: {type(response)}")
-        print(f"Response choices length: {len(response.choices)}")
-        print(f"First choice: {response.choices[0]}")
+        log.info("OpenAI API call successful!")
+        log.info(f"Response object type: {type(response)}")
+        log.info(f"Response choices length: {len(response.choices)}")
+        log.info(f"First choice: {response.choices[0]}")
         
         content = response.choices[0].message.content.strip()
-        # print(f"GPT-4o raw response: {content}")
-        print(f"Content type: {type(content)}")
+        log.info(f"Content type: {type(content)}")
         return content
         
     except Exception as e:
-        print(f"Exception in get_summary_from_image_with_gpt4o: {type(e).__name__}: {str(e)}")
+        log.error(f"Exception in get_summary_from_image_with_gpt4o: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image with GPT-4o: {str(e)}")
 
 
@@ -309,6 +312,7 @@ async def check_parking_from_image(
         is_sign_found = summary_json.get("isParkingSignFound", "true") == "true"
         message_type = "parking" if is_sign_found else "error"
 
+        log.info(f"ParkingCheckResponse for check_parking_from_image: {summary_json}")
         return ParkingCheckResponse(
             messageType=message_type, 
             session_id=session_id,
@@ -323,6 +327,7 @@ async def check_parking_from_image(
     except HTTPException:
         raise
     except Exception as e:
+        log.error(f"Error processing image: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 def format_public_parking_point(feature):
@@ -346,7 +351,7 @@ def format_parking_sign_point(feature):
     description = code_to_desc.get(category, "Unknown Sign Type")
     
     if lng is None or lat is None:
-        print(f"Missing coordinates in feature: {feature}")
+        log.error(f"Missing coordinates in feature: {feature}")
         lng, lat = -1, -1
     
     return {
@@ -365,24 +370,22 @@ async def check_parking_location(data: ParkingSearchRequest) -> ParkingSearchRes
     # Here, your logic to check parking rules by lat/lng + datetime
     # For prototype, return a dummy response:
     lat, lon = data.latitude, data.longitude
-    print(f"Checking parking at lat: {lat}, lon: {lon}")
+    log.info(f"Checking parking at lat: {lat}, lon: {lon}")
 
     try:
-        signs_nearby = get_signs_nearby(lat=lat, lon=lon, athena_client=athena_client, radius_meters=1000, debug=False, top_n=20)
-        parking_nearby = public_parking_nearby(lat=lat, lon=lon, athena_client=athena_client,radius_meters=2000, debug=False, top_n=30)
+        signs_nearby = get_signs_nearby(lat=lat, lon=lon, athena_client=athena_client, log=log, radius_meters=5000, debug=False, top_n=20)
+        parking_nearby = public_parking_nearby(lat=lat, lon=lon, athena_client=athena_client, log=log, radius_meters=4000, debug=False, top_n=30)
 
         # format signs for the map
         signs_list = [format_parking_sign_point(f) for f in signs_nearby]
         parking_list = [format_public_parking_point(f) for f in parking_nearby]
         
-        # print(f"Raw parking nearby: {parking_nearby[:3]}")
-        print(f"Parking nearby: {parking_list[:3]}")
-        print(all(isinstance(item['lat'], float) and isinstance(item['lng'], float) for item in parking_list))
-        # print(f"Parking categories found: {[s['category'] for s in signs_list]}")
-        # Filter signs to only include those with known categories
+        # log.info(f"Raw parking nearby: {parking_nearby[:3]}")
+        log.info(f"Parking nearby: {parking_list[:3]}")
+
         signs_list = [s for s in signs_list if code_to_desc.get(s['category'])]
-        print(f"Found {len(parking_list)} public parking lots/garages nearby")
-        print(f"Filtered to {len(signs_list)} signs with known categories")
+        log.info(f"Found {len(parking_list)} public parking lots/garages nearby")
+        log.info(f"Filtered to {len(signs_list)} signs with known categories")
 
         return ParkingSearchResponse(
             session_id=str(uuid.uuid4()),
@@ -402,6 +405,7 @@ async def followup_question(req: FollowUpRequest) -> FollowUpResponse:
     """
     previous_summary = store.get(req.session_id)
     if not previous_summary:
+        log.error(f"Session ID not found: {req.session_id}")
         raise HTTPException(status_code=404, detail="Session ID not found")
     
     datetime_str = datetime.now().strftime("%a %I:%M%p")  # Current datetime in required format
@@ -418,7 +422,7 @@ async def followup_question(req: FollowUpRequest) -> FollowUpResponse:
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=300,
+        max_tokens=280,
     )
 
     answer = response.choices[0].message.content.strip()
@@ -459,6 +463,5 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

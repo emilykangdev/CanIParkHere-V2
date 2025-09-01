@@ -76,7 +76,7 @@ def normalize_feature_coords(feature):
         **feature
     }
 
-def get_signs_nearby(lat, lon, athena_client, radius_meters=500, debug=False, top_n=10):
+def get_signs_nearby(lat, lon, athena_client, log, radius_meters=500, debug=False, top_n=10):
 
 
     db_name = os.getenv("AWS_DB_SIG")
@@ -97,9 +97,6 @@ def get_signs_nearby(lat, lon, athena_client, radius_meters=500, debug=False, to
     LIMIT {top_n};
     """
 
-    if debug:
-        print("Athena query:", query)
-
     response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": db_name},
@@ -116,16 +113,18 @@ def get_signs_nearby(lat, lon, athena_client, radius_meters=500, debug=False, to
         time.sleep(1)
 
     if state != "SUCCEEDED":
+        log.error(f"Athena query failed with state {state}")
         raise RuntimeError(f"Athena query failed with state {state}")
 
     result = athena_client.get_query_results(QueryExecutionId=execution_id)
 
     rows = parse_athena_results(result, numeric_fields=["SHAPE_LAT", "SHAPE_LNG", "distance_m"])
     normalized = [normalize_feature_coords(r) for r in rows if normalize_feature_coords(r) is not None]
+    log.info(f"Normalized rows length is {len(normalized)}")
     return normalized
 
 
-def public_parking_nearby(lat: float, lon: float, athena_client, radius_meters: float = 50, top_n: int = 10, debug=False):
+def public_parking_nearby(lat: float, lon: float, athena_client, log, radius_meters: float = 50, top_n: int = 10, debug=False):
     """Return public parking lots/garages within radius_meters of given lat/lon using Athena."""
     _validate_lat_lon(lat, lon)
 
@@ -145,7 +144,7 @@ def public_parking_nearby(lat: float, lon: float, athena_client, radius_meters: 
             to_spherical_geography(ST_Centroid(ST_GeomFromBinary(pg.geometry))),
             up.geom
         ) AS distance_m
-    FROM "AwsDataCatalog"."public_parking_garages_lots_db"."public_garages_and_parking_lots" pg
+    FROM "AwsDataCatalog"."{db_name}"."{table_name}" pg
     CROSS JOIN user_point up
     WHERE ST_Distance(
             to_spherical_geography(ST_Centroid(ST_GeomFromBinary(pg.geometry))),
@@ -172,6 +171,7 @@ def public_parking_nearby(lat: float, lon: float, athena_client, radius_meters: 
         time.sleep(1)
 
     if state != "SUCCEEDED":
+        log.error(f"Athena query failed with state {state}")
         raise RuntimeError(f"Athena query failed with state {state}")
 
     # Get results
@@ -183,8 +183,8 @@ def public_parking_nearby(lat: float, lon: float, athena_client, radius_meters: 
     numeric_fields = ["distance_m", "dea_stalls", "vacant", "regionid"]
     rows = parse_athena_results(result, numeric_fields=numeric_fields)
 
-    print(f"Parsed rows of length={len(rows)}: {rows}")
-    print(f"Parsed rows length is {len(rows)}")
+    log.info(f"Parsed rows of length={len(rows)}: {rows}")
+    log.info(f"Parsed rows length is {len(rows)}")
 
     return rows
 
