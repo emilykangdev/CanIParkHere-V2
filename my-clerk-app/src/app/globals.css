@@ -112,6 +112,35 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Google Maps Controls Styling */
+.gm-control-active {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  cursor: pointer !important;
+}
+
+.gm-control-active:hover {
+  background-color: #f9fafb !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.gm-control-active:active {
+  background-color: #f3f4f6 !important;
+}
+
+/* Ensure Google Maps locate button is clickable */
+.gm-style-moc {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.gm-style-moc:hover {
+  background-color: #f9fafb !important;
+}
+
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -1,5 +1,4 @@
-from geo.spatial_query_api import get_signs_nearby # , public_parking_nearb
-from geo.spatial_query_local import get_parking_street, public_parking_nearby
+from geo.spatial_query_api import get_signs_nearby, public_parking_nearby
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -330,19 +329,13 @@ def format_public_parking_point(feature):
     """
     This is just for the public parking facility dataset.
     """
-    coords = None
-    if "geometry" in feature and hasattr(feature["geometry"], "coords"):
-        coords = list(feature["geometry"].coords)[0]  # (lng, lat)
-    elif "geometry" in feature and isinstance(feature["geometry"], dict):
-        coords = feature["geometry"].get("coordinates")
-    if coords:
-        long, lat = coords
-        return {
-            "lat": lat,
-            "lng": long,
-            "address": feature.get("DEA_FACILITY_ADDRESS") or feature.get("address"),
-            "gmaps_url": f"https://www.google.com/maps?q={lat},{long}"
-        }
+    lng, lat = feature.get("lng"), feature.get("lat")
+    return {
+        "lat": float(lat),
+        "lng": float(lng),
+        "address": feature.get("dea_facility_address"),
+        "gmaps_url": f"https://www.google.com/maps?q={lat},{lng}"
+    }
     return None
 
 def format_parking_sign_point(feature):
@@ -375,17 +368,20 @@ async def check_parking_location(data: ParkingSearchRequest) -> ParkingSearchRes
     print(f"Checking parking at lat: {lat}, lon: {lon}")
 
     try:
-        signs_nearby = get_signs_nearby(lat=lat, lon=lon, athena_client=athena_client, radius_meters=500, debug=False, top_n=20)
-
-        parking_nearby = public_parking_nearby(lat=lat, lon=lon, radius_meters=500, debug=False, top_n=30) # THIS IS ESSENTIAL. 
+        signs_nearby = get_signs_nearby(lat=lat, lon=lon, athena_client=athena_client, radius_meters=1000, debug=False, top_n=20)
+        parking_nearby = public_parking_nearby(lat=lat, lon=lon, athena_client=athena_client,radius_meters=2000, debug=False, top_n=30)
 
         # format signs for the map
         signs_list = [format_parking_sign_point(f) for f in signs_nearby]
         parking_list = [format_public_parking_point(f) for f in parking_nearby]
         
-        print(f"Parking categories found: {[s['category'] for s in signs_list]}")
+        # print(f"Raw parking nearby: {parking_nearby[:3]}")
+        print(f"Parking nearby: {parking_list[:3]}")
+        print(all(isinstance(item['lat'], float) and isinstance(item['lng'], float) for item in parking_list))
+        # print(f"Parking categories found: {[s['category'] for s in signs_list]}")
         # Filter signs to only include those with known categories
         signs_list = [s for s in signs_list if code_to_desc.get(s['category'])]
+        print(f"Found {len(parking_list)} public parking lots/garages nearby")
         print(f"Filtered to {len(signs_list)} signs with known categories")
 
         return ParkingSearchResponse(

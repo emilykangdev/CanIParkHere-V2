@@ -72,7 +72,7 @@ export const apiClient = {
    */
   async checkParkingLocation(latitude, longitude, datetime = new Date().toISOString()) {
 
-    console.log('Inside checkparkingLocation function');
+    // console.log('Inside checkparkingLocation function');
     const response = await fetch(new URL('/check-parking-location', API_BASE).toString(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,7 +88,7 @@ export const apiClient = {
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
-    console.log('Response from checkParkingLocation:', response);
+    // console.log('Response from checkParkingLocation:', response);
     
     return response.json(); // Returns LocationCheckResponse type
   },

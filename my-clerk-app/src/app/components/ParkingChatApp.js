@@ -58,7 +58,7 @@ export default function ParkingChatApp({ setShowSidebar }) {
       addMessage('bot', '🔍 Analyzing parking sign...')
       
       const result = await apiClient.checkParkingImage(compressedFile)
-      console.log('API Response:', result) // Debug logging
+              // console.log('API Response:', result) // Debug logging
       
       if (result.session_id) setCurrentSessionId(result.session_id)
       

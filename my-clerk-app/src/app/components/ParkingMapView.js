@@ -7,8 +7,8 @@ import { motion } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
 import { copyToClipboard } from '../lib/copyToClipboard'
 import { createInfoWindowContent, createParkingSignInfoWindow } from '../lib/createInfoWindowContent'
-import SpotsLimitFAB from './SpotsLimitFAB'
 import { useUserData } from '../hooks/useUserData'
+import posthog from 'posthog-js'
 
 const defaultCenter = { lat: 47.6062, lng: -122.3321 }
 
@@ -21,7 +21,7 @@ export default function ParkingMapView({ setShowSidebar }) {
   const autocompleteServiceRef = useRef(null)
   const placesServiceRef = useRef(null)
 
-  const [spotsLimit, setSpotsLimit] = useState(10)
+  const [parkingLimit, setParkingLimit] = useState(10)
   const [parkingSpots, setParkingSpots] = useState([])
   const [parkingSigns, setParkingSigns] = useState([])
   const [inputValue, setInputValue] = useState('')
@@ -30,6 +30,9 @@ export default function ParkingMapView({ setShowSidebar }) {
   const [selectedPredictionId, setSelectedPredictionId] = useState(null)
   const [isSearching, setIsSearching] = useState(false)
   const [searchLocation, setSearchLocation] = useState(null)
+  const [showParkingSpots, setShowParkingSpots] = useState(true)
+  const [showParkingSigns, setShowParkingSigns] = useState(true)
+  const [showParkingPanel, setShowParkingPanel] = useState(true)
 
   // Load Google Maps API
   useEffect(() => {
@@ -51,7 +54,14 @@ export default function ParkingMapView({ setShowSidebar }) {
           zoom: 15,
           mapId: 'YOUR_MAP_ID',
           disableDefaultUI: true,
-          gestureHandling: 'greedy'
+          gestureHandling: 'greedy',
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          scaleControl: false,
+          rotateControl: false,
+          tilt: 0
         })
 
         markersRef.current.AdvancedMarkerElement = AdvancedMarkerElement
@@ -61,14 +71,19 @@ export default function ParkingMapView({ setShowSidebar }) {
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current)
 
         // ✅ Intercept clicks on Google POIs
+        
         mapInstanceRef.current.addListener('click', (e) => {
+          
           if (e.placeId) {
             e.stop() // Prevent Google's default InfoWindow
 
             placesServiceRef.current.getDetails(
               { placeId: e.placeId },
               (place, status) => {
+                
                 if (status === google.maps.places.PlacesServiceStatus.OK) {
+                  // console.log('✅ Place details received successfully')
+                  
                   const addressText = place.formatted_address || place.name
                   const encodedAddress = encodeURIComponent(addressText)
                   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`
@@ -87,8 +102,10 @@ export default function ParkingMapView({ setShowSidebar }) {
                   })
 
                   infoWindowRef.current.setContent(content)
+                  
                   infoWindowRef.current.setPosition(place.geometry.location)
                   infoWindowRef.current.open(mapInstanceRef.current)
+
 
                   google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
                     const btn = document.getElementById('copy-btn')
@@ -144,6 +161,12 @@ export default function ParkingMapView({ setShowSidebar }) {
   const clearMarkers = (type) => {
     markersRef.current[type]?.forEach((m) => m.setMap(null))
     markersRef.current[type] = []
+  }
+
+  // Clear all markers
+  const clearAllMarkers = () => {
+    clearMarkers('spots')
+    clearMarkers('signs')
   }
 
   // Marker creation helper
@@ -223,6 +246,27 @@ export default function ParkingMapView({ setShowSidebar }) {
     })
   }
 
+  // Clear markers when visibility toggles change
+  useEffect(() => {
+    if (!mapInstanceRef.current) return
+    
+    if (!showParkingSpots) {
+      clearMarkers('spots')
+    }
+    if (!showParkingSigns) {
+      clearMarkers('signs')
+    }
+  }, [showParkingSpots, showParkingSigns])
+
+  // Re-apply limit when parkingLimit changes
+  useEffect(() => {
+    if (selectedLocation && parkingSpots.length > 0) {
+      // Re-apply the current limit to existing results
+      setParkingSpots((prev) => prev.slice(0, parkingLimit))
+      setParkingSigns((prev) => prev.slice(0, parkingLimit))
+    }
+  }, [parkingLimit, selectedLocation])
+
   // Render markers
   useEffect(() => {
     if (!mapInstanceRef.current || !markersRef.current.AdvancedMarkerElement) return
@@ -231,16 +275,19 @@ export default function ParkingMapView({ setShowSidebar }) {
     clearMarkers('signs')
 
     // Parking Spots
-    markersRef.current.spots = parkingSpots.map((spot) =>
+    markersRef.current.spots = showParkingSpots ? parkingSpots.map((spot) =>
       addMarker({
         position: { lat: spot.lat, lng: spot.lng },
         title: 'Public Parking',
         label: { bg: '#16a34a', color: 'black', text: 'P' },
         onClick: (marker) => {
+          // console.log('🎯 Parking spot marker clicked:', spot)
           const addressText = spot.address || `${spot.lat}, ${spot.lng}`
           const encodedAddress = encodeURIComponent(addressText)
           const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`
           const appleMapsUrl = `https://maps.apple.com/?q=${encodedAddress}`
+          
+          // console.log('🔗 URLs created:', { googleMapsUrl, appleMapsUrl })
 
           const content = createInfoWindowContent({
             title: 'Public Parking',
@@ -250,11 +297,22 @@ export default function ParkingMapView({ setShowSidebar }) {
             copyLabel: 'Copy Address',
             showFindParking: true
           })
+          
+          // console.log('📝 Content created:', content)
+          // console.log('📝 Content length:', content.length)
+          // console.log('📝 Content type:', typeof content)
 
           infoWindowRef.current.setContent(content)
-          infoWindowRef.current.open(mapInstanceRef.current, marker)
+          // console.log('✅ Content set to InfoWindow')
+          
+          infoWindowRef.current.setPosition({ lat: spot.lat, lng: spot.lng })
+          // console.log('📍 Position set')
+          
+          infoWindowRef.current.open(mapInstanceRef.current)
+          // console.log('🚀 InfoWindow opened')
 
           google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+            // Copy button handler
             const btn = document.getElementById('copy-btn')
             if (btn) {
               btn.addEventListener('click', () => {
@@ -269,6 +327,7 @@ export default function ParkingMapView({ setShowSidebar }) {
               })
             }
 
+            // Find parking button handler
             const findBtn = document.getElementById('find-parking-btn')
             if (findBtn) {
               findBtn.addEventListener('click', () => {
@@ -277,13 +336,29 @@ export default function ParkingMapView({ setShowSidebar }) {
                 infoWindowRef.current.close() // ✅ close popup
               })
             }
+
+            // Google Maps button handler
+            const googleMapsBtn = document.getElementById('google-maps-btn')
+            if (googleMapsBtn) {
+              googleMapsBtn.addEventListener('click', () => {
+                window.open(googleMapsUrl, '_blank')
+              })
+            }
+
+            // Apple Maps button handler
+            const appleMapsBtn = document.getElementById('apple-maps-btn')
+            if (appleMapsBtn) {
+              appleMapsBtn.addEventListener('click', () => {
+                window.open(appleMapsUrl, '_blank')
+              })
+            }
           })
         }
       })
-    )
+    ) : []
 
     // Parking Signs (filter by status and category)
-    markersRef.current.signs = parkingSigns
+    markersRef.current.signs = showParkingSigns ? parkingSigns
       .map((sign) =>
         addMarker({
         position: { lat: sign.lat, lng: sign.lng },
@@ -294,11 +369,14 @@ export default function ParkingMapView({ setShowSidebar }) {
           text: 'S' 
         },
         onClick: (marker) => {
+          // console.log('🪧 Parking sign marker clicked:', sign)
           const signText = sign.text || 'No text available'
           const description = sign.description || 'Unknown Sign Type'
           const distance = sign.distance_m ? `${Math.round(sign.distance_m)} meters away` : ''
           const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${sign.lat},${sign.lng}`
           const appleMapsUrl = `https://maps.apple.com/?q=${sign.lat},${sign.lng}`
+          
+          // console.log('🔗 Sign URLs created:', { googleMapsUrl, appleMapsUrl })
           
           const content = createParkingSignInfoWindow({
             signText,
@@ -307,11 +385,22 @@ export default function ParkingMapView({ setShowSidebar }) {
             googleMapsUrl,
             appleMapsUrl
           })
+          
+          // console.log('📝 Sign content created:', content)
+          // console.log('📝 Sign content length:', content.length)
+          // console.log('📝 Sign content type:', typeof content)
 
           infoWindowRef.current.setContent(content)
-          infoWindowRef.current.open(mapInstanceRef.current, marker)
+          // console.log('✅ Sign content set to InfoWindow')
+          
+          infoWindowRef.current.setPosition({ lat: sign.lat + 0.0001, lng: sign.lng })
+          // console.log('📍 Sign position set')
+          
+          infoWindowRef.current.open(mapInstanceRef.current)
+          // console.log('🚀 Sign InfoWindow opened')
 
           google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+            // Copy button handler
             const btn = document.getElementById('copy-btn')
             if (btn) {
               btn.addEventListener('click', () => {
@@ -325,13 +414,29 @@ export default function ParkingMapView({ setShowSidebar }) {
                 })
               })
             }
+
+            // Google Maps button handler
+            const googleMapsBtn = document.getElementById('google-maps-btn')
+            if (googleMapsBtn) {
+              googleMapsBtn.addEventListener('click', () => {
+                window.open(googleMapsUrl, '_blank')
+              })
+            }
+
+            // Apple Maps button handler
+            const appleMapsBtn = document.getElementById('apple-maps-btn')
+            if (appleMapsBtn) {
+              appleMapsBtn.addEventListener('click', () => {
+                window.open(appleMapsUrl, '_blank')
+              })
+            }
           })
         }
       })
-    )
+    ) : []
 
     fitMapBounds()
-  }, [parkingSpots, parkingSigns, fitMapBounds])
+  }, [parkingSpots, parkingSigns, fitMapBounds, showParkingSpots, showParkingSigns, parkingLimit])
 
   // Search parking
   const searchParkingAt = async (lat, lng) => {
@@ -346,9 +451,9 @@ export default function ParkingMapView({ setShowSidebar }) {
     
     try {
       const result = await apiClient.searchParking(lat, lng)
-      setParkingSpots((result.public_parking_results || []).slice(0, spotsLimit))
-      console.log('Got parking sign results:', result.parking_sign_results)
-      setParkingSigns((result.parking_sign_results || []).slice(0, spotsLimit))
+      setParkingSpots((result.public_parking_results || []).slice(0, parkingLimit))
+      // console.log('Got parking sign results:', result.parking_sign_results)
+      setParkingSigns((result.parking_sign_results || []).slice(0, parkingLimit))
       
       // Center the map on the search location
       if (mapInstanceRef.current) {
@@ -450,7 +555,134 @@ export default function ParkingMapView({ setShowSidebar }) {
         <Crosshair className="w-6 h-6 text-gray-800" />
       </button>
 
-      <SpotsLimitFAB spotsLimit={spotsLimit} setSpotsLimit={setSpotsLimit} />
+
+      {/* Parking Indicators Toggle Button */}
+      <button
+        onClick={() => {
+          const newValue = !showParkingPanel
+          setShowParkingPanel(newValue)
+          posthog.capture('parking_panel_toggled', {
+            visible: newValue
+          })
+        }}
+        className="fixed bottom-32 left-4 z-50 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:shadow-xl transition-all"
+        title={showParkingPanel ? 'Hide Parking Controls' : 'Show Parking Controls'}
+      >
+        {showParkingPanel ? (
+          <div className="w-5 h-5 text-gray-600">⚙️</div>
+        ) : (
+          <div className="w-5 h-5 text-gray-600">🔧</div>
+        )}
+      </button>
+
+      {/* Parking Indicators Visibility Controls */}
+      {showParkingPanel && (
+        <div className="fixed bottom-32 left-20 z-50 bg-white rounded-2xl shadow-lg border border-gray-200 p-3 space-y-2">
+          <div className="text-xs font-semibold text-gray-700 text-center">Parking Indicators</div>
+          <div className="text-xs text-gray-500 text-center">Max: 20 total</div>
+          
+          {/* Parking Spots Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <span className="text-xs text-gray-600">Spots (P)</span>
+            <button
+              onClick={() => {
+                const newValue = !showParkingSpots
+                setShowParkingSpots(newValue)
+                posthog.capture('parking_indicators_toggled', {
+                  indicator_type: 'parking_spots',
+                  visible: newValue
+                })
+              }}
+              className={`w-8 h-4 rounded-full transition-colors ${
+                showParkingSpots ? 'bg-green-500' : 'bg-gray-300'
+              }`}
+            >
+              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${
+                showParkingSpots ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {/* Parking Signs Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <span className="text-xs text-gray-600">Signs (S)</span>
+            <button
+              onClick={() => {
+                const newValue = !showParkingSigns
+                setShowParkingSigns(newValue)
+                posthog.capture('parking_indicators_toggled', {
+                  indicator_type: 'parking_signs',
+                  visible: newValue
+                })
+              }}
+              className={`w-8 h-4 rounded-full transition-colors ${
+                showParkingSigns ? 'bg-red-500' : 'bg-gray-300'
+              }`}
+            >
+              <div className={`w-3 h-3 bg-white rounded-full transition-transform ${
+                showParkingSigns ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {/* Limits Controls */}
+          <div className="pt-2 border-t border-gray-200 space-y-2">
+            <div className="flex items-center justify-between space-x-2">
+              <span className="text-xs text-gray-600">Parking Limit</span>
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => {
+                    const newLimit = Math.max(1, parkingLimit - 1)
+                    setParkingLimit(newLimit)
+                    posthog.capture('parking_limit_changed', {
+                      new_limit: newLimit
+                    })
+                  }}
+                  className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 text-xs font-bold"
+                >
+                  -
+                </button>
+                <span className={`text-xs font-semibold w-6 text-center ${
+                  parkingLimit >= 20 ? 'text-green-600' : 'text-gray-700'
+                }`}>
+                  {parkingLimit}
+                  {parkingLimit >= 20 && <span className="text-xs text-green-500">/20</span>}
+                </span>
+                <button
+                  onClick={() => {
+                    const newLimit = Math.min(20, parkingLimit + 1)
+                    setParkingLimit(newLimit)
+                    posthog.capture('parking_limit_changed', {
+                      new_limit: newLimit
+                    })
+                  }}
+                  disabled={parkingLimit >= 20}
+                  className={`w-6 h-6 rounded-full text-xs font-bold transition-colors ${
+                    parkingLimit >= 20 
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                      : 'bg-gray-300 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* Clear All Button */}
+            <button
+              onClick={() => {
+                clearAllMarkers()
+                posthog.capture('parking_indicators_cleared', {
+                  action: 'clear_all_markers'
+                })
+              }}
+              className="w-full py-1 px-2 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search bar */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[90%] max-w-lg flex flex-col items-center gap-2">

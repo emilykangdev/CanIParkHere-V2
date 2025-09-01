@@ -113,7 +113,7 @@ export function createInfoWindowContent({
     ">
 
     <!-- ✅ Title at the top -->
-      <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">
+      <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px; color: black;">
         ${title}
       </div>
 

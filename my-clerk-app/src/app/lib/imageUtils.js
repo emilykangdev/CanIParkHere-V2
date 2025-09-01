@@ -18,7 +18,7 @@ export async function compressImage(file, options = {}) {
   const finalOptions = { ...defaultOptions, ...options };
   
   try {
-    console.log(`Starting compression: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+    // console.log(`Starting compression: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
     
     const compressedFile = await imageCompression(file, finalOptions);
     const imageData = await fileToBase64(compressedFile);
@@ -26,7 +26,7 @@ export async function compressImage(file, options = {}) {
     
     const compressionRatio = ((file.size - compressedFile.size) / file.size * 100).toFixed(1);
     
-    console.log(`Compression complete: ${(compressedFile.size / 1024 / 1024).toFixed(1)}MB (${compressionRatio}% reduction)`);
+          // console.log(`Compression complete: ${(compressedFile.size / 1024 / 1024).toFixed(1)}MB (${compressionRatio}% reduction)`);
     
     return {
       file: compressedFile,
@@ -122,7 +122,7 @@ export async function compressImageProgressive(file) {
   
   // If still too large (over 1MB), try more aggressive compression
   if (result.compressedSize > 1024 * 1024) {
-    console.log('File still large, trying aggressive compression...');
+          // console.log('File still large, trying aggressive compression...');
     
     const aggressiveResult = await compressImage(file, {
       maxSizeMB: 0.6,

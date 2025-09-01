@@ -125,45 +125,67 @@ def get_signs_nearby(lat, lon, athena_client, radius_meters=500, debug=False, to
     return normalized
 
 
-def public_parking_nearby(lat: float, lon: float, radius_meters: float = 50, debug=False, top_n: int = 10):
-    """Return public parking lots/garages within radius_meters of given lat/lon."""
+def public_parking_nearby(lat: float, lon: float, athena_client, radius_meters: float = 50, top_n: int = 10, debug=False):
+    """Return public parking lots/garages within radius_meters of given lat/lon using Athena."""
     _validate_lat_lon(lat, lon)
 
-    # Create point in EPSG:4326 and project to EPSG:3857 for meter-based distance
-    pt = gpd.GeoSeries([Point(lon, lat)], crs="EPSG:4326").to_crs(epsg=3857)
+    db_name = os.getenv("AWS_DB_PUB")
+    table_name = os.getenv("AWS_TABLE_PUB")
+    output_location = os.getenv("AWS_ATHENA_OUTPUT")
 
-    # Calculate distances in meters
-    distances = public_parking_data_3857.distance(pt.iloc[0])
+    query = f"""
+    WITH user_point AS (
+        SELECT to_spherical_geography(ST_Point({lon}, {lat})) AS geom
+    )
+    SELECT
+        pg.*,
+        ST_X(ST_Centroid(ST_GeomFromBinary(pg.geometry))) AS lng,
+        ST_Y(ST_Centroid(ST_GeomFromBinary(pg.geometry))) AS lat,
+        ST_Distance(
+            to_spherical_geography(ST_Centroid(ST_GeomFromBinary(pg.geometry))),
+            up.geom
+        ) AS distance_m
+    FROM "AwsDataCatalog"."public_parking_garages_lots_db"."public_garages_and_parking_lots" pg
+    CROSS JOIN user_point up
+    WHERE ST_Distance(
+            to_spherical_geography(ST_Centroid(ST_GeomFromBinary(pg.geometry))),
+            up.geom
+        ) <= {radius_meters}
+    ORDER BY distance_m ASC
+    LIMIT {top_n};
+    """
 
-    # Filter by radius
-    nearby = public_parking_data_3857[distances <= radius_meters].copy()
+    response = athena_client.start_query_execution(
+        QueryString=query,
+        QueryExecutionContext={"Database": db_name},
+        ResultConfiguration={"OutputLocation": output_location},
+    )
 
-    # Add distance column
-    nearby["distance_m"] = distances[distances <= radius_meters]
+    execution_id = response["QueryExecutionId"]
 
-    # Sort by distance
-    nearby = nearby.sort_values("distance_m")
+    # Wait for query completion
+    while True:
+        status = athena_client.get_query_execution(QueryExecutionId=execution_id)
+        state = status["QueryExecution"]["Status"]["State"]
+        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
+            break
+        time.sleep(1)
 
-    if debug:
-        print(f"Found {len(nearby)} public parking facilities within {radius_meters}m.")
-        print(nearby[["distance_m"]].head())
+    if state != "SUCCEEDED":
+        raise RuntimeError(f"Athena query failed with state {state}")
 
-    # Return as list of dicts in EPSG:4326 with distance included
-    return nearby.to_crs(epsg=4326).to_dict("records")
+    # Get results
+    result = athena_client.get_query_results(QueryExecutionId=execution_id)
 
+    # print(f"Athena query result: {result}")
 
-# def get_parking_street(lat: float, lon: float, radius_meters: float = 20, debug=False, top_n: int = 10):
-#     """Return street parking segments within radius_meters of given lat/lon."""
-#     _validate_lat_lon(lat, lon)
+    # Specify which fields should be numeric
+    numeric_fields = ["distance_m", "dea_stalls", "vacant", "regionid"]
+    rows = parse_athena_results(result, numeric_fields=numeric_fields)
 
-#     pt = gpd.GeoSeries([Point(lon, lat)], crs="EPSG:4326").to_crs(epsg=3857)
+    print(f"Parsed rows of length={len(rows)}: {rows}")
+    print(f"Parsed rows length is {len(rows)}")
 
-#     distances = street_parking_data_3857.distance(pt.iloc[0])
-#     nearby = street_parking_data_3857[distances <= radius_meters]
-
-#     if debug:
-#         print(f"Found {len(nearby)} street parking segments nearby.")
-
-#     return nearby.to_crs(epsg=4326).to_dict("records")
+    return rows
 
 
