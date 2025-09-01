@@ -55,7 +55,7 @@ export default function ParkingMapView({ setShowSidebar }) {
           mapId: 'YOUR_MAP_ID',
           disableDefaultUI: true,
           gestureHandling: 'greedy',
-          zoomControl: true,
+          zoomControl: false,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
@@ -542,7 +542,7 @@ export default function ParkingMapView({ setShowSidebar }) {
       {/* Menu button */}
       <button
         onClick={() => setShowSidebar(true)}
-        className="fixed top-4 left-4 z-50 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition"
+        className="fixed top-4 left-4 z-40 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition"
       >
         <Menu className="w-6 h-6 text-gray-800" />
       </button>
@@ -550,7 +550,7 @@ export default function ParkingMapView({ setShowSidebar }) {
       {/* My Location */}
       <button
         onClick={handleMyLocation}
-        className="fixed bottom-24 right-4 z-50 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition"
+        className="fixed bottom-32 right-4 z-40 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition"
       >
         <Crosshair className="w-6 h-6 text-gray-800" />
       </button>
@@ -565,7 +565,7 @@ export default function ParkingMapView({ setShowSidebar }) {
             visible: newValue
           })
         }}
-        className="fixed bottom-32 left-4 z-50 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:shadow-xl transition-all"
+        className="fixed bottom-32 left-4 z-40 bg-white rounded-full p-3 shadow-lg border border-gray-200 hover:shadow-xl transition-all"
         title={showParkingPanel ? 'Hide Parking Controls' : 'Show Parking Controls'}
       >
         {showParkingPanel ? (
@@ -577,7 +577,7 @@ export default function ParkingMapView({ setShowSidebar }) {
 
       {/* Parking Indicators Visibility Controls */}
       {showParkingPanel && (
-        <div className="fixed bottom-32 left-20 z-50 bg-white rounded-2xl shadow-lg border border-gray-200 p-3 space-y-2">
+        <div className="fixed bottom-32 left-20 z-40 bg-white rounded-2xl shadow-lg border border-gray-200 p-3 space-y-2">
           <div className="text-xs font-semibold text-gray-700 text-center">Parking Indicators</div>
           <div className="text-xs text-gray-500 text-center">Max: 20 total</div>
           
@@ -685,7 +685,7 @@ export default function ParkingMapView({ setShowSidebar }) {
       )}
 
       {/* Search bar */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-[90%] max-w-lg flex flex-col items-center gap-2">
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] max-w-lg flex flex-col items-center gap-2">
         {predictions.length > 0 && (
           <motion.ul
             initial={{ opacity: 0, y: 10 }}
