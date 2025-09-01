@@ -6,7 +6,11 @@ if(process.env.NEXT_PUBLIC_POSTHOG_KEY) {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     ui_host: "https://us.posthog.com",
     defaults: '2025-05-24',
-    capture_exceptions: true,
+    capture_exceptions: {
+      capture_unhandled_errors: true, // default
+      capture_unhandled_rejections: true, // default
+      capture_console_errors: false // default
+    },
     debug: false, // process.env.NODE_ENV === "development",
     // Session replay configuration
     session_recording: {

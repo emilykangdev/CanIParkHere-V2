@@ -3,9 +3,11 @@
  * Uses generated OpenAPI types for validation and consistency
  */
 
-const API_BASE = process.env.NODE_ENV === 'development' 
-  ? process.env.NEXT_PUBLIC_API_URL 
-  : 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+console.log('🔧 API Client initialized with base URL:', API_BASE);
+console.log('🔧 Environment:', process.env.NODE_ENV);
+console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
 
 /**
  * Main API client with typed responses
@@ -19,47 +21,113 @@ export const apiClient = {
    * @returns {Promise<ParkingCheckResponse>} Parking analysis result
    */
   async checkParkingImage(file, datetime_str = new Date().toISOString()) {
+    console.log('📸 checkParkingImage called with:', { 
+      fileName: file?.name, 
+      fileSize: file?.size, 
+      fileType: file?.type,
+      datetime: datetime_str 
+    });
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('datetime_str', datetime_str);
     
-    const response = await fetch(new URL('/check-parking-image', API_BASE).toString(), {
-      method: 'POST',
-      body: formData,
-    });
+    const url = new URL('/check-parking-image', API_BASE).toString();
+    console.log('🌐 Making request to:', url);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorText}`);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', { status: response.status, error: errorText });
+        throw new Error(`API Error ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ checkParkingImage successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 checkParkingImage failed:', error);
+      throw error;
     }
-    
-    return response.json(); // Returns ParkingCheckResponse type
   },
 
-  async querySeattleParking(lat, length, radiusMeters=100) {
-    const url = `/api/seattle-parking?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius=${encodeURIComponent(radiusMeters)}`
-    const r = await fetch(url)
-    if (!r.ok) {
-      const text = await r.text()
-      throw new Error(`API failed: ${r.status} ${text}`)
+  async querySeattleParking(lat, lng, radiusMeters=100) {
+    console.log('🏙️ querySeattleParking called with:', { lat, lng, radiusMeters });
+    
+    const url = `/api/seattle-parking?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius=${encodeURIComponent(radiusMeters)}`;
+    console.log('🌐 Making request to:', url);
+    
+    try {
+      const r = await fetch(url);
+      console.log('📡 Response received:', { 
+        status: r.status, 
+        statusText: r.statusText,
+        ok: r.ok 
+      });
+      
+      if (!r.ok) {
+        const text = await r.text();
+        console.error('❌ API Error:', { status: r.status, error: text });
+        throw new Error(`API failed: ${r.status} ${text}`);
+      }
+      
+      const result = await r.json();
+      console.log('✅ querySeattleParking successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 querySeattleParking failed:', error);
+      throw error;
     }
-    return r.json()
   },
 
   async searchParking(latitude, longitude) {
-    const url = '/search-parking'
-    const response = await fetch(new URL(url, API_BASE).toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        latitude,
-        longitude
-      })
-    })
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${await response.text()}`)
+    console.log('🔍 searchParking called with:', { latitude, longitude });
+    
+    const url = '/search-parking';
+    const fullUrl = new URL(url, API_BASE).toString();
+    console.log('🌐 Making request to:', fullUrl);
+    
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude,
+          longitude
+        })
+      });
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok 
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', { status: response.status, error: errorText });
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ searchParking successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 searchParking failed:', error);
+      throw error;
     }
-    return response.json()
   },
 
   /**
@@ -71,26 +139,53 @@ export const apiClient = {
    * @returns {Promise<LocationCheckResponse>} Location-based parking result
    */
   async checkParkingLocation(latitude, longitude, datetime = new Date().toISOString()) {
-
-    // console.log('Inside checkparkingLocation function');
-    const response = await fetch(new URL('/check-parking-location', API_BASE).toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        latitude: parseFloat(latitude), 
-        longitude: parseFloat(longitude), 
-        datetime 
-      }),
+    console.log('📍 checkParkingLocation called with:', { 
+      latitude, 
+      longitude, 
+      datetime,
+      parsedLat: parseFloat(latitude),
+      parsedLng: parseFloat(longitude)
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
-
-    // console.log('Response from checkParkingLocation:', response);
+    const url = new URL('/check-parking-location', API_BASE).toString();
+    console.log('🌐 Making request to:', url);
+    console.log('📤 Request payload:', { 
+      latitude: parseFloat(latitude), 
+      longitude: parseFloat(longitude), 
+      datetime 
+    });
     
-    return response.json(); // Returns LocationCheckResponse type
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          latitude: parseFloat(latitude), 
+          longitude: parseFloat(longitude), 
+          datetime 
+        }),
+      });
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', { status: response.status, error: errorText });
+        throw new Error(`API Error ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ checkParkingLocation successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 checkParkingLocation failed:', error);
+      throw error;
+    }
   },
 
   /**
@@ -100,18 +195,37 @@ export const apiClient = {
    * @returns {Promise<FollowUpResponse>} Answer to the question
    */
   async followUpQuestion(session_id, question) {
-    const response = await fetch(new URL('/followup-question', API_BASE).toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id, question }),
-    });
+    console.log('❓ followUpQuestion called with:', { session_id, question });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error ${response.status}: ${errorText}`);
+    const url = new URL('/followup-question', API_BASE).toString();
+    console.log('🌐 Making request to:', url);
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id, question }),
+      });
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok 
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', { status: response.status, error: errorText });
+        throw new Error(`API Error ${response.status}: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ followUpQuestion successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 followUpQuestion failed:', error);
+      throw error;
     }
-    
-    return response.json(); // Returns FollowUpResponse type
   },
 
   /**
@@ -119,13 +233,32 @@ export const apiClient = {
    * @returns {Promise<Object>} Health status
    */
   async healthCheck() {
-    const response = await fetch(new URL('/', API_BASE).toString());
+    console.log('🏥 healthCheck called');
     
-    if (!response.ok) {
-      throw new Error(`Health check failed: ${response.status}`);
+    const url = new URL('/', API_BASE).toString();
+    console.log('🌐 Making request to:', url);
+    
+    try {
+      const response = await fetch(url);
+      
+      console.log('📡 Response received:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok 
+      });
+      
+      if (!response.ok) {
+        console.error('❌ Health check failed:', { status: response.status });
+        throw new Error(`Health check failed: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ healthCheck successful:', result);
+      return result;
+    } catch (error) {
+      console.error('💥 healthCheck failed:', error);
+      throw error;
     }
-    
-    return response.json();
   }
 };
 
@@ -135,6 +268,8 @@ export const apiClient = {
  * @returns {string} User-friendly error message
  */
 export function formatApiError(error) {
+  console.log('🔧 formatApiError called with:', error);
+  
   if (error.message.includes('503')) {
     return 'Service temporarily unavailable. Please try again later.';
   }
