@@ -48,17 +48,19 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
         onClick={onClose}
+        style={{ touchAction: 'none' }}
       />
 
       {/* Sidebar */}
       <div
         className="fixed inset-y-0 left-0 w-full max-w-[100vw] sm:max-w-[85vw] md:max-w-[320px] 
-        bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl shadow-2xl z-50 
+        bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl z-[60] 
         border-r border-white/20 dark:border-gray-700"
+        style={{ touchAction: 'auto' }}
       >
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden relative">
           {/* Header */}
-          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 p-4 flex items-center justify-between text-white shadow-lg">
+          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 p-4 flex items-center justify-between text-white shadow-lg relative z-10">
             <h2 className="text-lg font-semibold">Menu</h2>
             <button
               onClick={onClose}
@@ -69,7 +71,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative z-20">
             
             {/* View Navigation */}
             <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
@@ -95,7 +97,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
                       onViewChange('chat')
                       onClose()
                     }}
-                    className={`flex items-center gap-3 w-full text-left p-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-3 w-full text-left p-2 rounded-lg ${
                       currentView === 'chat' 
                         ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300' 
                         : 'hover:bg-white/30 dark:hover:bg-gray-700/50 text-black dark:text-white'
