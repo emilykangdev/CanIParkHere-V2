@@ -54,7 +54,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
       {/* Sidebar */}
       <div
         className="fixed inset-y-0 left-0 w-full max-w-[100vw] sm:max-w-[85vw] md:max-w-[320px] 
-        bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl z-[60] 
+        bg-white/50 dark:bg-gray-900/70 backdrop-blur-xl shadow-2xl z-[60] 
         border-r border-white/20 dark:border-gray-700"
         style={{ touchAction: 'auto' }}
       >
