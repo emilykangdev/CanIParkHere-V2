@@ -39,6 +39,7 @@ app.add_middleware(
         "http://localhost:3001", 
         "https://caniparkhere.dev",
         "https://caniparkhere.vercel.app",
+        os.getenv("NEXT_DEVELOPMENT_URL"),
     ],
     allow_credentials=True,
     allow_methods=["*"],
