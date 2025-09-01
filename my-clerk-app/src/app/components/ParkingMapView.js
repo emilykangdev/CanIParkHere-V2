@@ -32,7 +32,8 @@ export default function ParkingMapView({ setShowSidebar }) {
   const [searchLocation, setSearchLocation] = useState(null)
   const [showParkingSpots, setShowParkingSpots] = useState(true)
   const [showParkingSigns, setShowParkingSigns] = useState(true)
-  const [showParkingPanel, setShowParkingPanel] = useState(true)
+  const [showParkingPanel, setShowParkingPanel] = useState(false)
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false)
 
   // Load Google Maps API
   useEffect(() => {
@@ -539,13 +540,15 @@ export default function ParkingMapView({ setShowSidebar }) {
       <Toaster position="top-center" />
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
-      {/* Menu button */}
+      {/* Menu Button */}
       <button
         onClick={() => setShowSidebar(true)}
-        className="fixed top-4 left-4 z-40 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition"
+        className="fixed top-4 left-4 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-white/20 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-800 transition-colors"
       >
-        <Menu className="w-6 h-6 text-gray-800" />
+        <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>
+
+      
 
       {/* My Location */}
       <button

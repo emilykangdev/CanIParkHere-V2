@@ -140,6 +140,8 @@ export default function ParkingChatApp({ setShowSidebar }) {
         <div className="w-10"></div> {/* Spacer to balance the layout */}
         </div>
 
+
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white/60">
         {messages.map((m) => {

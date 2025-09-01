@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs'
+import { SignedIn, SignedOut } from '@clerk/nextjs'
 import ParkingChatApp from './components/ParkingChatApp'
 import ParkingMapView from './components/ParkingMapView'
 import Sidebar from './components/Sidebar'
@@ -11,27 +11,19 @@ export default function Home() {
   const [currentView, setCurrentView] = useState('map') // 'map' or 'chat'
   
   return (
-    <>
-      <SignedIn>
-        <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {currentView === 'map' ? (
-            <ParkingMapView setShowSidebar={setShowSidebar} />
-          ) : (
-            <ParkingChatApp setShowSidebar={setShowSidebar} />
-          )}
-          
-          <Sidebar 
-            isOpen={showSidebar} 
-            onClose={() => setShowSidebar(false)}
-            currentView={currentView}
-            onViewChange={setCurrentView}
-          />
-        </main>
-      </SignedIn>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {currentView === 'map' ? (
+        <ParkingMapView setShowSidebar={setShowSidebar} />
+      ) : (
+        <ParkingChatApp setShowSidebar={setShowSidebar} />
+      )}
       
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
+      <Sidebar 
+        isOpen={showSidebar} 
+        onClose={() => setShowSidebar(false)}
+        currentView={currentView}
+        onViewChange={setCurrentView}
+      />
+    </main>
   )
 }
