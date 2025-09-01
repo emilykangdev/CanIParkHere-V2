@@ -280,7 +280,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
                     <p className="mb-3">
                       CanIParkHere uses AI to help interpret parking signs, and data from 
                       the City of Seattle to help you find parking spots. 
-                      It isn't guaranteed to be accurate.
+                      It isn&apos;t guaranteed to be accurate.
                     </p>
                     <p>
                       We aren&apos;t liable for
