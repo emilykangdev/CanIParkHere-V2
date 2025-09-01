@@ -119,17 +119,23 @@
   border-radius: 8px !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
   cursor: pointer !important;
-  z-index: 100 !important;
-  position: relative !important;
+  z-index: 100 !important; /* Ensures Google Maps controls are on top */
+  position: relative !important; /* Provides positioning context */
 }
 
-.gm-control-active:hover {
-  background-color: #f9fafb !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+/* Prevent scroll jumping when sidebar opens/closes */
+html {
+  scroll-behavior: auto !important;
 }
 
-.gm-control-active:active {
-  background-color: #f3f4f6 !important;
+body {
+  overflow-x: hidden;
+}
+
+/* Ensure main content doesn't shift when sidebar opens */
+main {
+  min-height: 100vh;
+  position: relative;
 }
 
 /* Ensure Google Maps locate button is clickable */

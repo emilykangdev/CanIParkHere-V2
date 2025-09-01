@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SignedIn, SignedOut } from '@clerk/nextjs'
 import ParkingChatApp from './components/ParkingChatApp'
 import ParkingMapView from './components/ParkingMapView'
@@ -9,6 +9,20 @@ import Sidebar from './components/Sidebar'
 export default function Home() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [currentView, setCurrentView] = useState('map') // 'map' or 'chat'
+  
+  // Preserve scroll position when switching views
+  const handleViewChange = (newView) => {
+    // Store current scroll position
+    const scrollY = window.scrollY
+    
+    // Change the view
+    setCurrentView(newView)
+    
+    // Restore scroll position after a brief delay to allow re-render
+    setTimeout(() => {
+      window.scrollTo(0, scrollY)
+    }, 0)
+  }
   
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -22,7 +36,7 @@ export default function Home() {
         isOpen={showSidebar} 
         onClose={() => setShowSidebar(false)}
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
       />
     </main>
   )
