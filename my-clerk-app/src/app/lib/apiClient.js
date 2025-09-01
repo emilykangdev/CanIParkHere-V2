@@ -3,9 +3,7 @@
  * Uses generated OpenAPI types for validation and consistency
  */
 
-const API_BASE = process.env.NODE_ENV === 'development' 
-  ? process.env.NEXT_PUBLIC_API_URL 
-  : 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 console.log('🔧 API Client initialized with base URL:', API_BASE);
 console.log('🔧 Environment:', process.env.NODE_ENV);
