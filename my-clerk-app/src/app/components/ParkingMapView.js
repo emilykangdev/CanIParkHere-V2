@@ -2,24 +2,29 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Loader } from '@googlemaps/js-api-loader'
 import { apiClient } from '../lib/apiClient'
-import { Menu, Crosshair, Search, X } from 'lucide-react'
+import { Menu, Crosshair, Search, X, Save } from 'lucide-react'
 import { motion } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
+import SaveParkingToast from './SaveParkingToast'
 import { copyToClipboard } from '../lib/copyToClipboard'
 import { createInfoWindowContent, createParkingSignInfoWindow } from '../lib/createInfoWindowContent'
 import { useUserData } from '../hooks/useUserData'
 import posthog from 'posthog-js'
+import { useUser } from '@clerk/nextjs'
+import { addParkingEntry } from '../lib/parkingStorage'
 
 const defaultCenter = { lat: 47.6062, lng: -122.3321 }
 
 export default function ParkingMapView({ setShowSidebar }) {
   const { incrementStat } = useUserData()
+  const { user, isSignedIn, isLoaded } = useUser()
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markersRef = useRef({ spots: [], signs: [] })
   const infoWindowRef = useRef(null)
   const autocompleteServiceRef = useRef(null)
   const placesServiceRef = useRef(null)
+  const geocoderRef = useRef(null)
 
   const [parkingLimit, setParkingLimit] = useState(10)
   const [parkingSpots, setParkingSpots] = useState([])
@@ -70,6 +75,7 @@ export default function ParkingMapView({ setShowSidebar }) {
 
         autocompleteServiceRef.current = new google.maps.places.AutocompleteService()
         placesServiceRef.current = new google.maps.places.PlacesService(mapInstanceRef.current)
+        geocoderRef.current = new google.maps.Geocoder()
 
         // ✅ Intercept clicks on Google POIs
         
@@ -145,6 +151,29 @@ export default function ParkingMapView({ setShowSidebar }) {
 
     initMap()
   }, [])
+
+  // Listen for Save Parking action from Sidebar (saves map center)
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        if (!isLoaded || !isSignedIn || !user?.id) {
+          toast.error('Sign in to save your parking location')
+          return
+        }
+        const center = mapInstanceRef.current?.getCenter()
+        if (!center) return
+        const lat = typeof center.lat === 'function' ? center.lat() : center.lat
+        const lng = typeof center.lng === 'function' ? center.lng() : center.lng
+        await addParkingEntry(user.id, { lat, lng, source: 'gps' })
+        toast.success('Saved parking location')
+      } catch (e) {
+        console.error('Save parking failed', e)
+        toast.error('Failed to save parking')
+      }
+    }
+    window.addEventListener('ciph:save-parking', handler)
+    return () => window.removeEventListener('ciph:save-parking', handler)
+  }, [isLoaded, isSignedIn, user])
 
   // Fit bounds
   const fitMapBounds = useCallback(() => {
@@ -529,6 +558,66 @@ export default function ParkingMapView({ setShowSidebar }) {
     await searchParkingAt(selectedLocation.lat, selectedLocation.lng)
   }
 
+  const handleSaveParking = async (note) => {
+    try {
+      if (!isLoaded || !isSignedIn || !user?.id) {
+        toast.error('Sign in to save your parking location')
+        return
+      }
+      let point = null
+      if (selectedLocation) {
+        point = { lat: selectedLocation.lat, lng: selectedLocation.lng }
+      } else {
+        const center = mapInstanceRef.current?.getCenter()
+        if (center) {
+          const lat = typeof center.lat === 'function' ? center.lat() : center.lat
+          const lng = typeof center.lng === 'function' ? center.lng() : center.lng
+          point = { lat, lng }
+        }
+      }
+      if (!point) return
+      // Reverse geocode to get a human-friendly address
+      let address = null
+      if (geocoderRef.current) {
+        try {
+          const { results } = await geocoderRef.current.geocode({ location: point })
+          address = results?.[0]?.formatted_address || null
+        } catch (e) {
+          // ignore geocode errors; we'll save coords only
+        }
+      }
+      await addParkingEntry(
+        user.id,
+        { lat: point.lat, lng: point.lng, address, source: selectedLocation ? 'poi' : 'gps', note: note || undefined }
+      )
+      toast.success('Saved parking location')
+    } catch (e) {
+      console.error('Save parking failed', e)
+      toast.error('Failed to save parking')
+    }
+  }
+
+  const openSaveNoteToast = () => {
+    if (!isLoaded || !isSignedIn || !user?.id) {
+      toast.error('Sign in to save your parking location')
+      return
+    }
+    const id = toast.custom((t) => (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center">
+        {/* backdrop */}
+        <div className="absolute inset-0 bg-black/40" onClick={() => toast.dismiss(id)} />
+        {/* modal */}
+        <div className="relative z-[71]">
+          <SaveParkingToast
+            visible={t.visible}
+            onCancel={() => toast.dismiss(id)}
+            onSave={async (note) => { await handleSaveParking(note); toast.dismiss(id) }}
+          />
+        </div>
+      </div>
+    ), { position: 'top-center', duration: Infinity })
+  }
+
   const clearSearch = () => {
     setInputValue('')
     setPredictions([])
@@ -537,7 +626,7 @@ export default function ParkingMapView({ setShowSidebar }) {
 
   return (
     <div className="relative w-full h-screen">
-      <Toaster position="top-center" />
+      <Toaster position="top-center" containerStyle={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <div ref={mapRef} className="absolute inset-0 z-0" />
 
       {/* Menu Button */}
@@ -546,6 +635,16 @@ export default function ParkingMapView({ setShowSidebar }) {
         className="fixed top-4 left-4 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-white/20 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-800 transition-colors"
       >
         <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+      </button>
+
+      {/* Floating Save Parking button (above widget) */}
+      <button
+        onClick={openSaveNoteToast}
+        className="fixed bottom-[11rem] left-6 z-40 bg-emerald-600 text-white rounded-full p-3 shadow-lg hover:bg-emerald-700"
+        title="Save parking with optional note"
+        aria-label="Save parking"
+      >
+        <Save className="w-5 h-5" />
       </button>
 
       
@@ -670,6 +769,16 @@ export default function ParkingMapView({ setShowSidebar }) {
                 </button>
               </div>
             </div>
+
+            {/* Save Parking Button */}
+            <button
+              onClick={openSaveNoteToast}
+              className="w-full py-1 px-2 text-xs bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg flex items-center justify-center"
+              title="Save parking with optional note"
+              aria-label="Save parking"
+            >
+              <Save className="w-4 h-4" />
+            </button>
 
             {/* Clear All Button */}
             <button

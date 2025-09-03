@@ -21,6 +21,7 @@ import { useUserData } from '../hooks/useUserData'
 import TicketTracker from './TicketTracker'
 import UserProfileModal from './UserProfileModal'
 // import SavedMapPinsModal from './SavedMapPinsModal'
+import ParkingHistory from './ParkingHistory'
 
 export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) {
   const { user, isSignedIn } = useUser()
@@ -110,30 +111,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
               </div>
             </div>
 
-            {/* Onboarding Section - Show for all users */}
-            <div className="rounded-lg bg-gradient-to-r from-green-500/20 to-emerald-500/20 dark:from-green-900/30 dark:to-emerald-900/30 backdrop-blur-md border border-green-200/30 dark:border-green-700/30">
-              <div className="p-3">
-                <h3 className="text-sm font-semibold text-black dark:text-white mb-2">🚀 Getting Started</h3>
-                <div className="space-y-2 text-xs text-black dark:text-white">
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-700 dark:text-green-600">1.</span>
-                    <span>Use the map to find parking spots and signs</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-700 dark:text-green-600">2.</span>
-                    <span>Click on markers to see parking details</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-700 dark:text-green-600">3.</span>
-                    <span>Ask the AI assistant about parking rules</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-700 dark:text-green-600">4.</span>
-                    <span>Sign in to save your searches and track stats</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Getting Started hidden */}
 
             {/* Sign In Section - Only show when not signed in */}
             {!isSignedIn && (
@@ -258,6 +236,31 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) 
                 </span>
               </button>
             </div> */}
+
+            {/* Parking History */}
+            <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
+              <div className="p-3">
+                <h3 className="text-sm font-semibold text-black dark:text-white mb-2">Parking History</h3>
+                <ParkingHistory />
+              </div>
+            </div>
+
+            {/* Settings / Actions */}
+            <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
+              <div className="p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-black dark:text-white">Actions</h3>
+                <button
+                  onClick={() => {
+                    // Dispatch a custom event for the map to handle saving
+                    window.dispatchEvent(new CustomEvent('ciph:save-parking', { detail: {} }))
+                    onClose()
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-lg"
+                >
+                  Save Parking
+                </button>
+              </div>
+            </div>
 
             {/* Terms & Conditions */}
             <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
