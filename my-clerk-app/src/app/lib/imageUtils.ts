@@ -1,12 +1,33 @@
 import imageCompression from 'browser-image-compression';
+import type { ImageCompressionOptions, ImageProcessingResult } from '@/types';
+
+interface CompressionOptions {
+  maxSizeMB?: number;
+  maxWidthOrHeight?: number;
+  useWebWorker?: boolean;
+  quality?: number;
+  fileType?: string;
+}
+
+interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
+interface CompressionResult extends ImageProcessingResult {
+  imageData: string;
+  dimensions: ImageDimensions;
+  success: boolean;
+  error?: string;
+}
 
 /**
  * Compresses an image file with optimization for parking sign OCR
- * @param {File} file - The image file to compress
- * @param {Object} options - Compression options
- * @returns {Promise<Object>} Compression result with file, base64 imageData, and stats
  */
-export async function compressImage(file, options = {}) {
+export async function compressImage(
+  file: File,
+  options: CompressionOptions = {}
+): Promise<CompressionResult> {
   const defaultOptions = {
     maxSizeMB: 0.8,          // Target 800KB for fast uploads
     maxWidthOrHeight: 1920,   // Max dimension sufficient for parking signs
@@ -33,7 +54,7 @@ export async function compressImage(file, options = {}) {
       imageData,
       originalSize: file.size,
       compressedSize: compressedFile.size,
-      compressionRatio,
+      compressionRatio: parseFloat(compressionRatio),
       dimensions,
       success: true
     };
@@ -51,27 +72,25 @@ export async function compressImage(file, options = {}) {
         imageData,
         originalSize: file.size, 
         compressedSize: file.size, 
-        compressionRatio: '0',
+        compressionRatio: 0,
         dimensions,
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     } catch (fallbackError) {
-      throw new Error(`Compression and fallback both failed: ${fallbackError.message}`);
+      throw new Error(`Compression and fallback both failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
     }
   }
 }
 
 /**
  * Converts a file to base64 data URL
- * @param {File} file - Image file
- * @returns {Promise<string>} Base64 data URL
  */
-async function fileToBase64(file) {
+async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error('Failed to convert file to base64'));
     
     reader.readAsDataURL(file);
@@ -80,10 +99,8 @@ async function fileToBase64(file) {
 
 /**
  * Gets image dimensions from a file using base64
- * @param {File} file - Image file
- * @returns {Promise<Object>} Width and height
  */
-async function getImageDimensions(file) {
+async function getImageDimensions(file: File): Promise<ImageDimensions> {
   return new Promise(async (resolve, reject) => {
     try {
       const base64 = await fileToBase64(file);
@@ -109,10 +126,8 @@ async function getImageDimensions(file) {
 
 /**
  * Progressive compression with multiple attempts for very large files
- * @param {File} file - Image file to compress
- * @returns {Promise<Object>} Best compression result
  */
-export async function compressImageProgressive(file) {
+export async function compressImageProgressive(file: File): Promise<CompressionResult> {
   // First attempt: Standard compression
   let result = await compressImage(file, {
     maxSizeMB: 0.8,
@@ -141,10 +156,8 @@ export async function compressImageProgressive(file) {
 
 /**
  * Formats file size for display
- * @param {number} bytes - Size in bytes
- * @returns {string} Formatted size string
  */
-export function formatFileSize(bytes) {
+export function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   
   const k = 1024;

@@ -5,32 +5,29 @@ import { Camera, MapPin, Send, Loader2, Menu } from 'lucide-react'
 import { compressImage } from '../lib/imageUtils'
 import { apiClient, formatApiError } from '../lib/apiClient'
 import { useUserData } from '../hooks/useUserData'
+import type { ChatMessage } from '@/types'
+import { MessageType } from '@/types'
 
+interface ParkingChatAppProps {
+  setShowSidebar: (show: boolean) => void;
+}
 
-export const MessageType = Object.freeze({
-  BOT: 'bot',
-  USER: 'user',
-  PARKING: 'parking',
-  FOLLOWUP: 'followup',
-  ERROR: 'error'
-})
-
-export default function ParkingChatApp({ setShowSidebar }) {
+export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) {
   const { incrementStat } = useUserData()
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: crypto.randomUUID(),
-      type: 'bot',
+      type: MessageType.BOT,
       data: { answer: '🅿️ Welcome to CanIParkHere! Upload a parking sign photo or use your location.' },
       timestamp: null
     }
   ])
-  const [isMounted, setIsMounted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [currentSessionId, setCurrentSessionId] = useState(null)
-  const messagesEndRef = useRef(null)
-  const fileInputRef = useRef(null)
-  const followUpInputRef = useRef(null)
+  const [isMounted, setIsMounted] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const followUpInputRef = useRef<HTMLInputElement>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   useEffect(() => scrollToBottom(), [messages])
@@ -39,11 +36,17 @@ export default function ParkingChatApp({ setShowSidebar }) {
     setMessages(prev => prev.map(msg => msg.timestamp === null ? { ...msg, timestamp: new Date() } : msg))
   }, [])
 
-  const addMessage = (type, data = null) => {
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), type, data, timestamp: new Date() }])
+  const addMessage = (type: MessageType, content?: string, data?: any) => {
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      type,
+      content,
+      data,
+      timestamp: new Date()
+    }])
   }
 
-  const handlePhotoUpload = async (event) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     event.target.value = ''
@@ -52,7 +55,7 @@ export default function ParkingChatApp({ setShowSidebar }) {
     try {
       compressionResult = await compressImage(file)
       const { file: compressedFile, imageData, originalSize, compressedSize, dimensions, compressionRatio, success } = compressionResult
-      addMessage('user', { type: 'user_image', originalSize, compressedSize, imageData, dimensions, compressionRatio, success })
+      addMessage(MessageType.USER, undefined, { type: 'user_image', originalSize, compressedSize, imageData, dimensions, compressionRatio, success })
       
       // Add immediate feedback
       addMessage('bot', '🔍 Analyzing parking sign...')
@@ -64,7 +67,7 @@ export default function ParkingChatApp({ setShowSidebar }) {
       
       // Handle response with fallback
       const messageType = result.messageType || 'bot'
-      const responseMessage = result.answer || result.message || result.reason || 'Analysis complete!'
+      const responseMessage = result.reason || 'Analysis complete!'
       
       addMessage(messageType, { ...result, answer: responseMessage })
       
@@ -72,7 +75,11 @@ export default function ParkingChatApp({ setShowSidebar }) {
       incrementStat('signsAnalyzed')
     } catch (error) {
       console.error('Image upload error:', error)
-      addMessage('error', { type: 'error_with_preview', imageData: compressionResult?.imageData || null, error: error.message })
+      addMessage(MessageType.ERROR, undefined, {
+        type: 'error_with_preview',
+        imageData: compressionResult?.imageData || null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -100,7 +107,7 @@ export default function ParkingChatApp({ setShowSidebar }) {
     )
   }
 
-  const handleFollowUpSubmit = async (e) => {
+  const handleFollowUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const question = followUpInputRef.current?.value?.trim()
     if (!question || !currentSessionId) return
@@ -109,15 +116,17 @@ export default function ParkingChatApp({ setShowSidebar }) {
     try {
       const result = await apiClient.followUpQuestion(currentSessionId, question)
       addMessage('followup', { answer: result.answer })
-      followUpInputRef.current.value = ''
+      if (followUpInputRef.current) {
+        followUpInputRef.current.value = ''
+      }
     } catch (error) {
-      addMessage('error', `❌ ${formatApiError(error)}`)
+      addMessage(MessageType.ERROR, `❌ ${formatApiError(error instanceof Error ? error : new Error('Unknown error'))}`)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const formatTime = (ts) => ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const formatTime = (ts: Date | null) => ts?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || ''
 
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-gradient-to-br from-blue-50 to-blue-100 text-gray-900">

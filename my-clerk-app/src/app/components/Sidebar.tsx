@@ -23,14 +23,21 @@ import UserProfileModal from './UserProfileModal'
 // import SavedMapPinsModal from './SavedMapPinsModal'
 import ParkingHistory from './ParkingHistory'
 
-export default function Sidebar({ isOpen, onClose, currentView, onViewChange }) {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentView: 'map' | 'chat';
+  onViewChange: (view: 'map' | 'chat') => void;
+}
+
+export default function Sidebar({ isOpen, onClose, currentView, onViewChange }: SidebarProps) {
   const { user, isSignedIn } = useUser()
   const { signOut } = useClerk()
   const { userProfile } = useUserData()
-  const [showTerms, setShowTerms] = useState(false)
-  const [showTicketTracker, setShowTicketTracker] = useState(false)
-  const [showMapPins, setShowMapPins] = useState(false) // ✅ Defined here
-  const [showUserProfile, setShowUserProfile] = useState(false)
+  const [showTerms, setShowTerms] = useState<boolean>(false)
+  const [showTicketTracker, setShowTicketTracker] = useState<boolean>(false)
+  const [showMapPins, setShowMapPins] = useState<boolean>(false)
+  const [showUserProfile, setShowUserProfile] = useState<boolean>(false)
 
   const handleLogout = async () => {
     try {

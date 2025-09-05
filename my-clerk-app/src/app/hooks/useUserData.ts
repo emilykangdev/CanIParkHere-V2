@@ -6,11 +6,12 @@
 import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { syncUserProfile, getUserProfile, updateUserPreferences, incrementUserStat } from '../lib/userDataService'
+import type { UserProfile, UserPreferences, UserStats, UseUserDataReturn } from '@/types'
 
-export function useUserData() {
+export function useUserData(): UseUserDataReturn {
   const { user, isSignedIn } = useUser()
-  const [userProfile, setUserProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
 
   // Sync user profile when Clerk user changes
   useEffect(() => {
@@ -36,9 +37,9 @@ export function useUserData() {
   }, [isSignedIn, user])
 
   // Helper functions
-  const updatePreferences = async (preferences) => {
+  const updatePreferences = async (preferences: Partial<UserPreferences>): Promise<UserPreferences | null> => {
     if (!user?.id) return null
-    
+
     try {
       const updatedPrefs = await updateUserPreferences(user.id, preferences)
       setUserProfile(prev => prev ? { ...prev, preferences: updatedPrefs } : null)
@@ -49,9 +50,9 @@ export function useUserData() {
     }
   }
 
-  const incrementStat = async (statType) => {
+  const incrementStat = async (statType: keyof UserStats): Promise<void> => {
     if (!user?.id) return
-    
+
     try {
       await incrementUserStat(user.id, statType)
       // Refresh profile to get updated stats

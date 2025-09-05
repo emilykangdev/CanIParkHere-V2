@@ -1,11 +1,20 @@
-// /contexts/ThemeContext.js
+// /contexts/ThemeContext.tsx
 'use client'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
-const ThemeContext = createContext()
+interface ThemeContextType {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
 
-export function ThemeProvider({ children }) {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+
+interface ThemeProviderProps {
+  children: ReactNode;
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
 
   // Load theme from localStorage or system preference
   useEffect(() => {
@@ -35,6 +44,10 @@ export function ThemeProvider({ children }) {
   )
 }
 
-export function useTheme() {
-  return useContext(ThemeContext)
+export function useTheme(): ThemeContextType {
+  const context = useContext(ThemeContext)
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
 }

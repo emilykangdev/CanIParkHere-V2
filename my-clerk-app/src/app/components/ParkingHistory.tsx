@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { getLastParked, getParkingHistory } from '../lib/parkingStorage'
 
-function formatTimeAgo(iso) {
+function formatTimeAgo(iso: string): string {
   try {
     const then = new Date(iso)
     const diffMs = Date.now() - then.getTime()
@@ -20,7 +20,7 @@ function formatTimeAgo(iso) {
   }
 }
 
-function mapsUrls(lat, lng, address) {
+function mapsUrls(lat: number, lng: number, address: string): { google: string; apple: string } {
   const encoded = address ? encodeURIComponent(address) : `${lat},${lng}`
   return {
     google: `https://www.google.com/maps/search/?api=1&query=${encoded}`,
@@ -32,10 +32,10 @@ export default function ParkingHistory() {
   const { isLoaded, isSignedIn, user } = useUser()
   const userId = user?.id
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [items, setItems] = useState([])
-  const [lastPointer, setLastPointer] = useState(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [items, setItems] = useState<any[]>([])
+  const [lastPointer, setLastPointer] = useState<any>(null)
 
   useEffect(() => {
     let active = true
@@ -45,7 +45,7 @@ export default function ParkingHistory() {
       setError(null)
       try {
         const [{ items: history }, lp] = await Promise.all([
-          getParkingHistory(userId, 50),
+          getParkingHistory(userId, 50, null),
           getLastParked(userId, { resolveHistory: false }),
         ])
         if (!active) return
@@ -53,7 +53,7 @@ export default function ParkingHistory() {
         setLastPointer(lp)
       } catch (e) {
         if (!active) return
-        setError(e?.message || 'Failed to load history')
+        setError(e instanceof Error ? e.message : 'Failed to load history')
       } finally {
         if (active) setLoading(false)
       }

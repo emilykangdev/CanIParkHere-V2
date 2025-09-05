@@ -5,7 +5,12 @@ import { X, User, BarChart3, MapPin, FileText, Calendar } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 import { useUserData } from '../hooks/useUserData'
 
-export default function UserProfileModal({ isOpen, onClose }) {
+interface UserProfileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
   const { user } = useUser()
   const { userProfile } = useUserData()
 

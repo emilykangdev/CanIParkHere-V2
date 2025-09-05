@@ -3,32 +3,11 @@
  * This should match the backend MessageType enum and response models
  */
 
-// Message Types (matches backend MessageType enum)
-export const MessageType = Object.freeze({
-  BOT: 'bot',
-  USER: 'user', 
-  PARKING: 'parking',
-  FOLLOWUP: 'followup',
-  ERROR: 'error'
-});
+import type { ChatMessage, MessageData } from '@/types';
+import { MessageType, MessageDataType, ParkingCategory } from '@/types';
 
-// Data Types for message.data field
-export const MessageDataType = Object.freeze({
-  COMPRESSION: 'compression',
-  ERROR_WITH_PREVIEW: 'error_with_preview',
-  PARKING_RESULT: 'parking_result',
-  LOCATION_RESULT: 'location_result'
-});
-
-// Parking Categories (matches backend ParkingCategory enum)
-export const ParkingCategory = Object.freeze({
-  UNRESTRICTED: 'Unrestricted Parking',
-  NO_PARKING: 'No Parking Allowed',
-  RESTRICTED_ZONE: 'Restricted Parking Zone', 
-  PAID_PARKING: 'Paid Parking',
-  TIME_LIMITED: 'Time Limited Parking',
-  CARPOOL: 'Carpool Parking'
-});
+// Re-export types for backward compatibility
+export { MessageType, MessageDataType, ParkingCategory };
 
 /**
  * Base message structure
@@ -93,8 +72,8 @@ export const MessageFactory = {
   /**
    * Create a bot message
    */
-  bot: (content, data = null) => ({
-    id: Date.now(),
+  bot: (content: string, data?: MessageData): ChatMessage => ({
+    id: crypto.randomUUID(),
     type: MessageType.BOT,
     content,
     data,
@@ -104,8 +83,8 @@ export const MessageFactory = {
   /**
    * Create a user message
    */
-  user: (content, data = null) => ({
-    id: Date.now(),
+  user: (content: string, data?: MessageData): ChatMessage => ({
+    id: crypto.randomUUID(),
     type: MessageType.USER,
     content,
     data,
@@ -115,7 +94,7 @@ export const MessageFactory = {
   /**
    * Create a parking result message
    */
-  parking: (content, parkingData) => ({
+  parking: (content: string, parkingData: any): ChatMessage => ({
     id: Date.now(),
     type: MessageType.PARKING,
     content,
@@ -129,7 +108,7 @@ export const MessageFactory = {
   /**
    * Create an error message
    */
-  error: (content, errorData = null) => ({
+  error: (content: string, errorData?: MessageData): ChatMessage => ({
     id: Date.now(),
     type: MessageType.ERROR,
     content,

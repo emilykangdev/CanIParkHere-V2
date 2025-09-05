@@ -3,6 +3,17 @@
  * Uses generated OpenAPI types for validation and consistency
  */
 
+import type {
+  ParkingCheckResponse,
+  ParkingSearchResponse,
+  LocationCheckResponse,
+  FollowUpResponse,
+  FollowUpRequest,
+  HealthCheckResponse,
+  FirebaseTokenResponse,
+  ApiErrorResponse
+} from '@/types';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 console.log('🔧 API Client initialized with base URL:', API_BASE);
@@ -16,11 +27,11 @@ console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
 export const apiClient = {
   /**
    * Check parking rules from uploaded image
-   * @param {File} file - Image file of parking sign
-   * @param {string} datetime_str - Current datetime (optional)
-   * @returns {Promise<ParkingCheckResponse>} Parking analysis result
    */
-  async checkParkingImage(file, datetime_str = new Date().toISOString()) {
+  async checkParkingImage(
+    file: File,
+    datetime_str: string = new Date().toISOString()
+  ): Promise<ParkingCheckResponse> {
     console.log('📸 checkParkingImage called with:', { 
       fileName: file?.name, 
       fileSize: file?.size, 
@@ -32,7 +43,7 @@ export const apiClient = {
     formData.append('file', file);
     formData.append('datetime_str', datetime_str);
     
-    const url = new URL('/check-parking-image', API_BASE).toString();
+    const url = new URL('/api/check-parking-image', API_BASE).toString();
     console.log('🌐 Making request to:', url);
     
     try {
@@ -63,39 +74,12 @@ export const apiClient = {
     }
   },
 
-  async querySeattleParking(lat, lng, radiusMeters=100) {
-    console.log('🏙️ querySeattleParking called with:', { lat, lng, radiusMeters });
-    
-    const url = `/api/seattle-parking?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius=${encodeURIComponent(radiusMeters)}`;
-    console.log('🌐 Making request to:', url);
-    
-    try {
-      const r = await fetch(url);
-      console.log('📡 Response received:', { 
-        status: r.status, 
-        statusText: r.statusText,
-        ok: r.ok 
-      });
-      
-      if (!r.ok) {
-        const text = await r.text();
-        console.error('❌ API Error:', { status: r.status, error: text });
-        throw new Error(`API failed: ${r.status} ${text}`);
-      }
-      
-      const result = await r.json();
-      console.log('✅ querySeattleParking successful:', result);
-      return result;
-    } catch (error) {
-      console.error('💥 querySeattleParking failed:', error);
-      throw error;
-    }
-  },
 
-  async searchParking(latitude, longitude) {
+
+  async searchParking(latitude: number, longitude: number): Promise<ParkingSearchResponse> {
     console.log('🔍 searchParking called with:', { latitude, longitude });
     
-    const url = '/search-parking';
+    const url = '/api/search-parking';
     const fullUrl = new URL(url, API_BASE).toString();
     console.log('🌐 Making request to:', fullUrl);
     
@@ -132,13 +116,12 @@ export const apiClient = {
 
   /**
    * Check parking rules by location coordinates
-   * @param {number} latitude - Latitude coordinate
-   * @param {number} longitude - Longitude coordinate  
-   * @param {string} datetime - Date/time for parking check
-   * @description Sends body with format {<LocationCheckRequest>} to the API
-   * @returns {Promise<LocationCheckResponse>} Location-based parking result
    */
-  async checkParkingLocation(latitude, longitude, datetime = new Date().toISOString()) {
+  async checkParkingLocation(
+    latitude: number,
+    longitude: number,
+    datetime: string = new Date().toISOString()
+  ): Promise<LocationCheckResponse> {
     console.log('📍 checkParkingLocation called with:', { 
       latitude, 
       longitude, 
@@ -147,7 +130,7 @@ export const apiClient = {
       parsedLng: parseFloat(longitude)
     });
     
-    const url = new URL('/check-parking-location', API_BASE).toString();
+    const url = new URL('/api/check-parking-location', API_BASE).toString();
     console.log('🌐 Making request to:', url);
     console.log('📤 Request payload:', { 
       latitude: parseFloat(latitude), 
@@ -190,14 +173,11 @@ export const apiClient = {
 
   /**
    * Ask follow-up questions about a previous parking check
-   * @param {string} session_id - Session ID from previous check
-   * @param {string} question - Follow-up question
-   * @returns {Promise<FollowUpResponse>} Answer to the question
    */
-  async followUpQuestion(session_id, question) {
+  async followUpQuestion(session_id: string, question: string): Promise<FollowUpResponse> {
     console.log('❓ followUpQuestion called with:', { session_id, question });
     
-    const url = new URL('/followup-question', API_BASE).toString();
+    const url = new URL('/api/followup', API_BASE).toString();
     console.log('🌐 Making request to:', url);
     
     try {
@@ -230,12 +210,11 @@ export const apiClient = {
 
   /**
    * Health check endpoint
-   * @returns {Promise<Object>} Health status
    */
-  async healthCheck() {
+  async healthCheck(): Promise<HealthCheckResponse> {
     console.log('🏥 healthCheck called');
     
-    const url = new URL('/', API_BASE).toString();
+    const url = new URL('/api/health', API_BASE).toString();
     console.log('🌐 Making request to:', url);
     
     try {
@@ -264,10 +243,8 @@ export const apiClient = {
 
 /**
  * Helper function to handle API errors consistently
- * @param {Error} error - Error from API call
- * @returns {string} User-friendly error message
  */
-export function formatApiError(error) {
+export function formatApiError(error: Error): string {
   console.log('🔧 formatApiError called with:', error);
   
   if (error.message.includes('503')) {

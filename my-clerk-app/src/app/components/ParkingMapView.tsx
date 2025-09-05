@@ -15,23 +15,27 @@ import { addParkingEntry } from '../lib/parkingStorage'
 
 const defaultCenter = { lat: 47.6062, lng: -122.3321 }
 
-export default function ParkingMapView({ setShowSidebar }) {
+interface ParkingMapViewProps {
+  setShowSidebar: (show: boolean) => void;
+}
+
+export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) {
   const { incrementStat } = useUserData()
   const { user, isSignedIn, isLoaded } = useUser()
   const mapRef = useRef(null)
-  const mapInstanceRef = useRef(null)
-  const markersRef = useRef({ spots: [], signs: [] })
-  const infoWindowRef = useRef(null)
-  const autocompleteServiceRef = useRef(null)
-  const placesServiceRef = useRef(null)
-  const geocoderRef = useRef(null)
+  const mapInstanceRef = useRef<google.maps.Map | null>(null)
+  const markersRef = useRef<{ spots: any[]; signs: any[]; AdvancedMarkerElement?: any }>({ spots: [], signs: [] })
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
+  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null)
+  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null)
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null)
 
   const [parkingLimit, setParkingLimit] = useState(10)
-  const [parkingSpots, setParkingSpots] = useState([])
-  const [parkingSigns, setParkingSigns] = useState([])
+  const [parkingSpots, setParkingSpots] = useState<any[]>([])
+  const [parkingSigns, setParkingSigns] = useState<any[]>([])
   const [inputValue, setInputValue] = useState('')
   const [predictions, setPredictions] = useState([])
-  const [selectedLocation, setSelectedLocation] = useState(null)
+  const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null)
   const [selectedPredictionId, setSelectedPredictionId] = useState(null)
   const [isSearching, setIsSearching] = useState(false)
   const [searchLocation, setSearchLocation] = useState(null)
@@ -45,15 +49,15 @@ export default function ParkingMapView({ setShowSidebar }) {
     const initMap = async () => {
       try {
         const loader = new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
           version: 'beta',
           libraries: ['places', 'marker']
         })
 
         await loader.load()
 
-        const { Map } = await google.maps.importLibrary('maps')
-        const { AdvancedMarkerElement } = await google.maps.importLibrary('marker')
+        const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary
+        const { AdvancedMarkerElement } = await google.maps.importLibrary('marker') as google.maps.MarkerLibrary
 
         mapInstanceRef.current = new Map(mapRef.current, {
           center: defaultCenter,
