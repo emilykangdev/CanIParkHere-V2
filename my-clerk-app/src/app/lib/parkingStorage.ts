@@ -4,7 +4,6 @@ import { db } from './firebase'
 import {
   addDoc,
   collection,
-  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -13,7 +12,6 @@ import {
   query,
   setDoc,
   updateDoc,
-  where,
   startAfter as qStartAfter,
 } from 'firebase/firestore'
 
@@ -40,11 +38,11 @@ import {
 
 const nowIso = () => new Date().toISOString()
 
-function userHistoryColRef(userId) {
+function userHistoryColRef(userId: string) {
   return collection(db, 'users', userId, 'history')
 }
 
-function lastParkedDocRef(userId) {
+function lastParkedDocRef(userId: string) {
   return doc(db, 'users', userId, 'lastParked', 'current')
 }
 
@@ -55,19 +53,20 @@ function lastParkedDocRef(userId) {
  * @param {ParkingEntryInput} entry
  * @returns {Promise<{entryId: string}>}
  */
-export async function addParkingEntry(userId, entry) {
+export async function addParkingEntry(userId: string, entry: unknown) {
   if (!userId) throw new Error('addParkingEntry: userId is required')
-  if (typeof entry?.lat !== 'number' || typeof entry?.lng !== 'number') {
+  const entryData = entry as Record<string, unknown>;
+  if (typeof entryData?.lat !== 'number' || typeof entryData?.lng !== 'number') {
     throw new Error('addParkingEntry: lat/lng must be numbers')
   }
 
   const payload = {
-    lat: entry.lat,
-    lng: entry.lng,
-    address: entry.address ?? null,
+    lat: entryData.lat,
+    lng: entryData.lng,
+    address: entryData.address ?? null,
     savedAtISO: nowIso(),
-    source: entry.source,
-    note: entry.note ?? null,
+    source: entryData.source,
+    note: entryData.note ?? null,
     photoUrl: null,
   }
 
@@ -103,7 +102,7 @@ export async function addParkingEntry(userId, entry) {
  * @param {Object=} options
  * @param {boolean=} options.resolveHistory If true, also fetch the history document referenced by entryId
  */
-export async function getLastParked(userId, options = {}) {
+export async function getLastParked(userId: string, options: Record<string, unknown> = {}) {
   if (!userId) throw new Error('getLastParked: userId is required')
   const snap = await getDoc(lastParkedDocRef(userId))
   if (!snap.exists()) return null
@@ -122,7 +121,7 @@ export async function getLastParked(userId, options = {}) {
  * @param {number} limitN
  * @param {import('firebase/firestore').QueryDocumentSnapshot=} startAfterSnap
  */
-export async function getParkingHistory(userId, limitN = 20, startAfterSnap) {
+export async function getParkingHistory(userId: string, limitN: number = 20, startAfterSnap?: unknown) {
   if (!userId) throw new Error('getParkingHistory: userId is required')
   const col = userHistoryColRef(userId)
   const baseQ = query(col, orderBy('savedAtISO', 'desc'), qLimit(limitN))
@@ -141,7 +140,7 @@ export async function getParkingHistory(userId, limitN = 20, startAfterSnap) {
  * @param {string} note
  * @param {boolean=} refreshLastParkedDenorm
  */
-export async function updateParkingNote(userId, entryId, note, refreshLastParkedDenorm = true) {
+export async function updateParkingNote(userId: string, entryId: string, note: string, refreshLastParkedDenorm: boolean = true) {
   if (!userId || !entryId) throw new Error('updateParkingNote: userId and entryId are required')
   const entryRef = doc(db, 'users', userId, 'history', entryId)
   await updateDoc(entryRef, { note: note ?? null })
@@ -161,7 +160,7 @@ export async function updateParkingNote(userId, entryId, note, refreshLastParked
  * Clear the last parked pointer (history remains).
  * @param {string} userId
  */
-export async function clearLastParked(userId) {
+export async function clearLastParked(userId: string) {
   if (!userId) throw new Error('clearLastParked: userId is required')
   await setDoc(lastParkedDocRef(userId), { entryId: null, entryPath: null, denorm: null, updatedAtISO: nowIso() }, { merge: true })
 }

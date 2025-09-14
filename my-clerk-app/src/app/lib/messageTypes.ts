@@ -94,8 +94,8 @@ export const MessageFactory = {
   /**
    * Create a parking result message
    */
-  parking: (content: string, parkingData: any): ChatMessage => ({
-    id: Date.now(),
+  parking: (content: string, parkingData: MessageData): ChatMessage => ({
+    id: Date.now().toString(),
     type: MessageType.PARKING,
     content,
     data: {
@@ -109,7 +109,7 @@ export const MessageFactory = {
    * Create an error message
    */
   error: (content: string, errorData?: MessageData): ChatMessage => ({
-    id: Date.now(),
+    id: Date.now().toString(),
     type: MessageType.ERROR,
     content,
     data: errorData,
@@ -119,8 +119,8 @@ export const MessageFactory = {
   /**
    * Create a compression preview message
    */
-  compression: (content, compressionData) => ({
-    id: Date.now(),
+  compression: (content: string, compressionData: MessageData) => ({
+    id: Date.now().toString(),
     type: MessageType.USER,
     content,
     data: {
@@ -133,8 +133,8 @@ export const MessageFactory = {
   /**
    * Create an error with preview message
    */
-  errorWithPreview: (content, previewData) => ({
-    id: Date.now(),
+  errorWithPreview: (content: string, previewData: MessageData) => ({
+    id: Date.now().toString(),
     type: MessageType.ERROR,
     content,
     data: {
@@ -149,14 +149,15 @@ export const MessageFactory = {
  * Validation helpers
  */
 export const MessageValidator = {
-  isValidType: (type) => Object.values(MessageType).includes(type),
-  isValidDataType: (dataType) => Object.values(MessageDataType).includes(dataType),
-  
-  hasValidStructure: (message) => {
+  isValidType: (type: unknown) => Object.values(MessageType).includes(type as MessageType),
+  isValidDataType: (dataType: unknown) => Object.values(MessageDataType).includes(dataType as MessageDataType),
+
+  hasValidStructure: (message: unknown) => {
+    const msg = message as Record<string, unknown>;
     return message &&
-           typeof message.id === 'number' &&
-           MessageValidator.isValidType(message.type) &&
-           typeof message.content === 'string' &&
-           message.timestamp instanceof Date;
+           typeof msg.id === 'string' &&
+           MessageValidator.isValidType(msg.type) &&
+           typeof msg.content === 'string' &&
+           msg.timestamp instanceof Date;
   }
 };

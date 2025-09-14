@@ -16,7 +16,8 @@ export enum MessageDataType {
   COMPRESSION = 'compression',
   ERROR_WITH_PREVIEW = 'error_with_preview',
   PARKING_RESULT = 'parking_result',
-  LOCATION_RESULT = 'location_result'
+  LOCATION_RESULT = 'location_result',
+  USER_IMAGE = 'user_image'
 }
 
 // Chat Message Structure
@@ -33,8 +34,8 @@ export interface MessageData {
   answer?: string;
   error?: string;
   preview?: string;
-  result?: any;
-  [key: string]: any;
+  result?: unknown;
+  [key: string]: unknown;
 }
 
 // Map-related Types
@@ -98,7 +99,7 @@ export interface MapMarker {
   title?: string;
   description?: string;
   icon?: string;
-  data?: any;
+  data?: unknown;
 }
 
 // Info Window Content
@@ -106,7 +107,7 @@ export interface InfoWindowContent {
   title: string;
   description: string;
   actions?: InfoWindowAction[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InfoWindowAction {

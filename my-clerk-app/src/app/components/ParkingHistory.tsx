@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { getLastParked, getParkingHistory } from '../lib/parkingStorage'
+import type { ParkingEntry, LastParkedPointer } from '@/types'
 
 function formatTimeAgo(iso: string): string {
   try {
@@ -34,8 +35,8 @@ export default function ParkingHistory() {
 
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-  const [items, setItems] = useState<any[]>([])
-  const [lastPointer, setLastPointer] = useState<any>(null)
+  const [items, setItems] = useState<ParkingEntry[]>([])
+  const [lastPointer, setLastPointer] = useState<LastParkedPointer | null>(null)
 
   useEffect(() => {
     let active = true
@@ -49,8 +50,8 @@ export default function ParkingHistory() {
           getLastParked(userId, { resolveHistory: false }),
         ])
         if (!active) return
-        setItems(history)
-        setLastPointer(lp)
+        setItems(history as ParkingEntry[])
+        setLastPointer(lp as LastParkedPointer | null)
       } catch (e) {
         if (!active) return
         setError(e instanceof Error ? e.message : 'Failed to load history')

@@ -9,17 +9,12 @@ import {
   Map,
   ChevronDown,
   ChevronRight,
-  Moon,
-  Sun,
-  Receipt,
-  MapPinned,
   MessageCircle
 } from 'lucide-react'
 import { useUser, useClerk } from '@clerk/nextjs'
-import { useTheme } from '../contexts/ThemeContext'
 import { useUserData } from '../hooks/useUserData'
-import TicketTracker from './TicketTracker'
 import UserProfileModal from './UserProfileModal'
+import Image from 'next/image'
 // import SavedMapPinsModal from './SavedMapPinsModal'
 import ParkingHistory from './ParkingHistory'
 
@@ -35,8 +30,6 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }: 
   const { signOut } = useClerk()
   const { userProfile } = useUserData()
   const [showTerms, setShowTerms] = useState<boolean>(false)
-  const [showTicketTracker, setShowTicketTracker] = useState<boolean>(false)
-  const [showMapPins, setShowMapPins] = useState<boolean>(false)
   const [showUserProfile, setShowUserProfile] = useState<boolean>(false)
 
   const handleLogout = async () => {
@@ -167,9 +160,11 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }: 
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 bg-white/30 dark:bg-gray-800/50 rounded-full flex items-center justify-center backdrop-blur-md overflow-hidden">
                       {user.imageUrl ? (
-                        <img 
-                          src={user.imageUrl} 
-                          alt="Profile" 
+                        <Image
+                          src={user.imageUrl}
+                          alt="Profile"
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
                         />
                       ) : (

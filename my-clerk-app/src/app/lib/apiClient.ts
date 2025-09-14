@@ -8,10 +8,7 @@ import type {
   ParkingSearchResponse,
   LocationCheckResponse,
   FollowUpResponse,
-  FollowUpRequest,
-  HealthCheckResponse,
-  FirebaseTokenResponse,
-  ApiErrorResponse
+  HealthCheckResponse
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -122,30 +119,28 @@ export const apiClient = {
     longitude: number,
     datetime: string = new Date().toISOString()
   ): Promise<LocationCheckResponse> {
-    console.log('📍 checkParkingLocation called with:', { 
-      latitude, 
-      longitude, 
-      datetime,
-      parsedLat: parseFloat(latitude),
-      parsedLng: parseFloat(longitude)
+    console.log('📍 checkParkingLocation called with:', {
+      latitude,
+      longitude,
+      datetime
     });
     
     const url = new URL('/api/check-parking-location', API_BASE).toString();
     console.log('🌐 Making request to:', url);
-    console.log('📤 Request payload:', { 
-      latitude: parseFloat(latitude), 
-      longitude: parseFloat(longitude), 
-      datetime 
+    console.log('📤 Request payload:', {
+      latitude,
+      longitude,
+      datetime
     });
     
     try {
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          latitude: parseFloat(latitude), 
-          longitude: parseFloat(longitude), 
-          datetime 
+        body: JSON.stringify({
+          latitude,
+          longitude,
+          datetime
         }),
       });
       

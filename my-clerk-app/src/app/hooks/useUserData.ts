@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { syncUserProfile, getUserProfile, updateUserPreferences, incrementUserStat } from '../lib/userDataService'
 import type { UserProfile, UserPreferences, UserStats, UseUserDataReturn } from '@/types'
+import { User as ClerkUser } from '@clerk/nextjs/server'
 
 export function useUserData(): UseUserDataReturn {
   const { user, isSignedIn } = useUser()
@@ -21,7 +22,7 @@ export function useUserData(): UseUserDataReturn {
           setLoading(true)
           await syncUserProfile(user)
           const profile = await getUserProfile(user.id)
-          setUserProfile(profile)
+          setUserProfile(profile as UserProfile | null)
         } catch (error) {
           console.error('Error syncing user:', error)
         } finally {
@@ -42,8 +43,8 @@ export function useUserData(): UseUserDataReturn {
 
     try {
       const updatedPrefs = await updateUserPreferences(user.id, preferences)
-      setUserProfile(prev => prev ? { ...prev, preferences: updatedPrefs } : null)
-      return updatedPrefs
+      setUserProfile(prev => prev && updatedPrefs ? { ...prev, preferences: updatedPrefs as unknown as UserPreferences } : prev)
+      return updatedPrefs as unknown as UserPreferences | null
     } catch (error) {
       console.error('Error updating preferences:', error)
       throw error
@@ -57,7 +58,7 @@ export function useUserData(): UseUserDataReturn {
       await incrementUserStat(user.id, statType)
       // Refresh profile to get updated stats
       const updatedProfile = await getUserProfile(user.id)
-      setUserProfile(updatedProfile)
+      setUserProfile(updatedProfile as UserProfile | null)
     } catch (error) {
       console.error('Error incrementing stat:', error)
     }
@@ -65,7 +66,7 @@ export function useUserData(): UseUserDataReturn {
 
   return {
     // Clerk auth data
-    user,
+    user: user as ClerkUser | null | undefined,
     isSignedIn,
     
     // Firestore user data
@@ -73,7 +74,9 @@ export function useUserData(): UseUserDataReturn {
     loading,
     
     // Helper functions
-    updatePreferences,
+    updatePreferences: async (preferences: Partial<UserPreferences>) => {
+      await updatePreferences(preferences);
+    },
     incrementStat
   }
 }

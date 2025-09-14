@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { X, User, BarChart3, MapPin, FileText, Calendar } from 'lucide-react'
+import { X, User, BarChart3, Calendar } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
 import { useUserData } from '../hooks/useUserData'
+import Image from 'next/image'
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -16,10 +16,10 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
 
   if (!isOpen || !user) return null
 
-  const formatDate = (timestamp) => {
+  const formatDate = (timestamp: unknown) => {
     if (!timestamp) return 'Unknown'
     try {
-      return timestamp.toDate().toLocaleDateString()
+      return (timestamp as { toDate: () => Date }).toDate().toLocaleDateString()
     } catch {
       return 'Unknown'
     }
@@ -56,9 +56,11 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
                 {user.imageUrl ? (
-                  <img 
-                    src={user.imageUrl} 
-                    alt="Profile" 
+                  <Image
+                    src={user.imageUrl}
+                    alt="Profile"
+                    width={64}
+                    height={64}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -139,7 +141,7 @@ export default function UserProfileModal({ isOpen, onClose }: UserProfileModalPr
                 <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
                   <span className="text-gray-600 dark:text-gray-400">Last seen</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {formatDate(userProfile?.lastSeen) || 'Now'}
+                    {formatDate(userProfile?.lastActiveAt) || 'Now'}
                   </span>
                 </div>
                 

@@ -5,8 +5,8 @@ import { Camera, MapPin, Send, Loader2, Menu } from 'lucide-react'
 import { compressImage } from '../lib/imageUtils'
 import { apiClient, formatApiError } from '../lib/apiClient'
 import { useUserData } from '../hooks/useUserData'
-import type { ChatMessage } from '@/types'
-import { MessageType } from '@/types'
+import type { ChatMessage, MessageData } from '@/types'
+import { MessageType, MessageDataType } from '@/types'
 
 interface ParkingChatAppProps {
   setShowSidebar: (show: boolean) => void;
@@ -36,7 +36,7 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
     setMessages(prev => prev.map(msg => msg.timestamp === null ? { ...msg, timestamp: new Date() } : msg))
   }, [])
 
-  const addMessage = (type: MessageType, content?: string, data?: any) => {
+  const addMessage = (type: MessageType, content?: string, data?: MessageData) => {
     setMessages(prev => [...prev, {
       id: crypto.randomUUID(),
       type,
@@ -55,10 +55,10 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
     try {
       compressionResult = await compressImage(file)
       const { file: compressedFile, imageData, originalSize, compressedSize, dimensions, compressionRatio, success } = compressionResult
-      addMessage(MessageType.USER, undefined, { type: 'user_image', originalSize, compressedSize, imageData, dimensions, compressionRatio, success })
+      addMessage(MessageType.USER, undefined, { type: MessageDataType.USER_IMAGE, originalSize, compressedSize, imageData, dimensions, compressionRatio, success })
       
       // Add immediate feedback
-      addMessage('bot', '🔍 Analyzing parking sign...')
+      addMessage(MessageType.BOT, '🔍 Analyzing parking sign...')
       
       const result = await apiClient.checkParkingImage(compressedFile)
               // console.log('API Response:', result) // Debug logging
@@ -66,17 +66,17 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
       if (result.session_id) setCurrentSessionId(result.session_id)
       
       // Handle response with fallback
-      const messageType = result.messageType || 'bot'
+      const messageType = result.messageType || MessageType.BOT
       const responseMessage = result.reason || 'Analysis complete!'
-      
-      addMessage(messageType, { ...result, answer: responseMessage })
+
+      addMessage(messageType as MessageType, undefined, { ...result, answer: responseMessage })
       
       // Track sign analysis stat
       incrementStat('signsAnalyzed')
     } catch (error) {
       console.error('Image upload error:', error)
       addMessage(MessageType.ERROR, undefined, {
-        type: 'error_with_preview',
+        type: MessageDataType.ERROR_WITH_PREVIEW,
         imageData: compressionResult?.imageData || null,
         error: error instanceof Error ? error.message : 'Unknown error'
       })
@@ -86,23 +86,23 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
   }
 
   const handleLocationRequest = () => {
-    if (!navigator.geolocation) return addMessage('bot', '❌ Geolocation not supported.')
-    addMessage('user', '📍 Requesting location...')
+    if (!navigator.geolocation) return addMessage(MessageType.BOT, '❌ Geolocation not supported.')
+    addMessage(MessageType.USER, '📍 Requesting location...')
     setIsLoading(true)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords
-        addMessage('user', `📍 Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
+        addMessage(MessageType.USER, `📍 Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`)
         const result = await apiClient.checkParkingLocation(latitude, longitude)
         setIsLoading(false)
-        addMessage(MessageType.PARKING, result)
+        addMessage(MessageType.PARKING, undefined, result as unknown as MessageData)
       },
       async () => {
         const fallbackLat = 47.669253, fallbackLng = -122.311622
-        addMessage('user', `📍 Using fallback: ${fallbackLat}, ${fallbackLng}`)
+        addMessage(MessageType.USER, `📍 Using fallback: ${fallbackLat}, ${fallbackLng}`)
         const result = await apiClient.checkParkingLocation(fallbackLat, fallbackLng)
         setIsLoading(false)
-        addMessage(MessageType.PARKING, result)
+        addMessage(MessageType.PARKING, undefined, result as unknown as MessageData)
       }
     )
   }
@@ -111,11 +111,11 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
     e.preventDefault()
     const question = followUpInputRef.current?.value?.trim()
     if (!question || !currentSessionId) return
-    addMessage('user', `❓ ${question}`)
+    addMessage(MessageType.USER, `❓ ${question}`)
     setIsLoading(true)
     try {
       const result = await apiClient.followUpQuestion(currentSessionId, question)
-      addMessage('followup', { answer: result.answer })
+      addMessage(MessageType.FOLLOWUP, undefined, { answer: result.answer })
       if (followUpInputRef.current) {
         followUpInputRef.current.value = ''
       }
@@ -164,20 +164,38 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                {m.data?.answer || m.data?.message || (typeof m.data === 'string' ? m.data : '')}
-                {m.data?.type === 'user_image' && (
+{(() => {
+                  if (typeof m.data === 'string') return m.data;
+                  if (m.data?.answer && typeof m.data.answer === 'string') return m.data.answer;
+                  if (m.data?.message && typeof m.data.message === 'string') return m.data.message;
+                  return '';
+                })()}
+                {m.data?.type === MessageDataType.USER_IMAGE && (
                   <div className="mt-2">
                     <div className="text-sm mb-2">
-                      📸 Image uploaded ({m.data.dimensions?.width}x{m.data.dimensions?.height})
-                      {m.data.success && (
-                        <div className="text-xs opacity-70">
-                          Compressed: {(m.data.originalSize / 1024).toFixed(1)}KB → {(m.data.compressedSize / 1024).toFixed(1)}KB 
-                          ({(m.data.compressionRatio * 100).toFixed(0)}% reduction)
-                        </div>
-                      )}
+                      {(() => {
+                        const data = m.data as MessageData & {
+                          dimensions?: { width: number, height: number },
+                          success?: boolean,
+                          originalSize?: number,
+                          compressedSize?: number,
+                          compressionRatio?: number
+                        };
+                        return (
+                          <>
+                            📸 Image uploaded ({data?.dimensions?.width}x{data?.dimensions?.height})
+                            {data?.success && (
+                              <div className="text-xs opacity-70">
+                                Compressed: {((data?.originalSize || 0) / 1024).toFixed(1)}KB to {((data?.compressedSize || 0) / 1024).toFixed(1)}KB
+                                ({((data?.compressionRatio || 0) * 100).toFixed(0)}% reduction)
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <Image
-                      src={m.data.imageData}
+                      src={(m.data as MessageData & { imageData?: string })?.imageData || ''}
                       alt="Uploaded image"
                       width={320}
                       height={128}
@@ -186,10 +204,10 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
                     />
                   </div>
                 )}
-                {m.data?.imageData && m.data?.type !== 'user_image' && (
+                {(m.data as MessageData & { imageData?: string })?.imageData && m.data?.type !== MessageDataType.USER_IMAGE && (
                   <div className="mt-2">
                     <Image
-                      src={m.data.imageData}
+                      src={(m.data as MessageData & { imageData?: string })?.imageData || ''}
                       alt="Preview"
                       width={320}
                       height={128}

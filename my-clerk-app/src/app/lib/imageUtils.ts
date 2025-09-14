@@ -1,5 +1,5 @@
 import imageCompression from 'browser-image-compression';
-import type { ImageCompressionOptions, ImageProcessingResult } from '@/types';
+import type { ImageProcessingResult } from '@/types';
 
 interface CompressionOptions {
   maxSizeMB?: number;
@@ -129,7 +129,7 @@ async function getImageDimensions(file: File): Promise<ImageDimensions> {
  */
 export async function compressImageProgressive(file: File): Promise<CompressionResult> {
   // First attempt: Standard compression
-  let result = await compressImage(file, {
+  const result = await compressImage(file, {
     maxSizeMB: 0.8,
     quality: 0.8,
     maxWidthOrHeight: 1920

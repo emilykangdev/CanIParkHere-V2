@@ -5,7 +5,6 @@
 
 import { ReactNode } from 'react';
 import { ChatMessage, MapLocation, ParkingSign, PublicParkingFacility } from './parking';
-import { UserProfile } from './user';
 
 // Layout Components
 export interface RootLayoutProps {
@@ -18,6 +17,7 @@ export interface HeaderProps {
 }
 
 // Main App Components
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HomePageProps {
   // No props for main page component
 }
@@ -54,11 +54,13 @@ export interface ThemeProviderProps {
   children: ReactNode;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ThemeToggleProps {
   // No props - uses context
 }
 
 // Parking History Component
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ParkingHistoryProps {
   // No props - uses hooks internally
 }
@@ -154,8 +156,8 @@ export interface PostHogProviderProps {
 
 export interface ClerkProviderProps {
   children: ReactNode;
-  appearance?: any;
-  [key: string]: any;
+  appearance?: unknown;
+  [key: string]: unknown;
 }
 
 // Hook Return Types (for components that use these hooks)

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { SignedIn, SignedOut } from '@clerk/nextjs'
+import { useState } from 'react'
 import ParkingChatApp from './components/ParkingChatApp'
 import ParkingMapView from './components/ParkingMapView'
 import Sidebar from './components/Sidebar'

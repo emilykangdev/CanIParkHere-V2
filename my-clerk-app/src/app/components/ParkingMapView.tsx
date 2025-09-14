@@ -12,6 +12,7 @@ import { useUserData } from '../hooks/useUserData'
 import posthog from 'posthog-js'
 import { useUser } from '@clerk/nextjs'
 import { addParkingEntry } from '../lib/parkingStorage'
+import type { PublicParkingFacility, ParkingSign } from '@/types'
 
 const defaultCenter = { lat: 47.6062, lng: -122.3321 }
 
@@ -24,25 +25,23 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
   const { user, isSignedIn, isLoaded } = useUser()
   const mapRef = useRef(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
-  const markersRef = useRef<{ spots: any[]; signs: any[]; AdvancedMarkerElement?: any }>({ spots: [], signs: [] })
+  const markersRef = useRef<{ spots: google.maps.marker.AdvancedMarkerElement[]; signs: google.maps.marker.AdvancedMarkerElement[]; AdvancedMarkerElement?: typeof google.maps.marker.AdvancedMarkerElement }>({ spots: [], signs: [] })
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
   const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null)
   const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null)
   const geocoderRef = useRef<google.maps.Geocoder | null>(null)
 
   const [parkingLimit, setParkingLimit] = useState(10)
-  const [parkingSpots, setParkingSpots] = useState<any[]>([])
-  const [parkingSigns, setParkingSigns] = useState<any[]>([])
+  const [parkingSpots, setParkingSpots] = useState<PublicParkingFacility[]>([])
+  const [parkingSigns, setParkingSigns] = useState<ParkingSign[]>([])
   const [inputValue, setInputValue] = useState('')
-  const [predictions, setPredictions] = useState([])
+  const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([])
   const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number} | null>(null)
-  const [selectedPredictionId, setSelectedPredictionId] = useState(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchLocation, setSearchLocation] = useState(null)
+  const [selectedPredictionId, setSelectedPredictionId] = useState<string | null>(null)
+
   const [showParkingSpots, setShowParkingSpots] = useState(true)
   const [showParkingSigns, setShowParkingSigns] = useState(true)
   const [showParkingPanel, setShowParkingPanel] = useState(false)
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false)
 
   // Load Google Maps API
   useEffect(() => {
@@ -58,6 +57,8 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
 
         const { Map } = await google.maps.importLibrary('maps') as google.maps.MapsLibrary
         const { AdvancedMarkerElement } = await google.maps.importLibrary('marker') as google.maps.MarkerLibrary
+
+        if (!mapRef.current) return
 
         mapInstanceRef.current = new Map(mapRef.current, {
           center: defaultCenter,
@@ -83,22 +84,26 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
 
         // ✅ Intercept clicks on Google POIs
         
-        mapInstanceRef.current.addListener('click', (e) => {
-          
+        mapInstanceRef.current.addListener('click', (e: google.maps.MapMouseEvent & { placeId?: string, stop?: () => void }) => {
+
           if (e.placeId) {
             e.stop() // Prevent Google's default InfoWindow
+
+            if (!placesServiceRef.current) return
 
             placesServiceRef.current.getDetails(
               { placeId: e.placeId },
               (place, status) => {
                 
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                if (status === google.maps.places.PlacesServiceStatus.OK && place) {
                   // console.log('✅ Place details received successfully')
-                  
-                  const addressText = place.formatted_address || place.name
+
+                  const addressText = place.formatted_address || place.name || 'Unknown Location'
                   const encodedAddress = encodeURIComponent(addressText)
                   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`
                   const appleMapsUrl = `https://maps.apple.com/?q=${encodedAddress}`
+
+                  if (!place.geometry?.location) return
 
                   const lat = place.geometry.location.lat()
                   const lng = place.geometry.location.lng()
@@ -112,8 +117,9 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
                     showFindParking: true
                   })
 
+                  if (!infoWindowRef.current) return
+
                   infoWindowRef.current.setContent(content)
-                  
                   infoWindowRef.current.setPosition(place.geometry.location)
                   infoWindowRef.current.open(mapInstanceRef.current)
 
@@ -138,7 +144,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
                       findBtn.addEventListener('click', () => {
                         setSelectedLocation({ lat, lng })
                         searchParkingAt(lat, lng)
-                        infoWindowRef.current.close() // ✅ close popup
+                        infoWindowRef.current?.close() // ✅ close popup
                       })
                     }
                   })
@@ -154,7 +160,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
     }
 
     initMap()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for Save Parking action from Sidebar (saves map center)
   useEffect(() => {
@@ -187,13 +193,13 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
       bounds.extend({ lat, lng })
     )
     if (!bounds.isEmpty()) {
-      mapInstanceRef.current.fitBounds(bounds, { padding: 50 })
+      mapInstanceRef.current.fitBounds(bounds, 50)
     }
   }, [parkingSpots, parkingSigns])
 
   // Clear markers
-  const clearMarkers = (type) => {
-    markersRef.current[type]?.forEach((m) => m.setMap(null))
+  const clearMarkers = (type: 'spots' | 'signs') => {
+    markersRef.current[type]?.forEach((m) => { m.map = null })
     markersRef.current[type] = []
   }
 
@@ -204,8 +210,10 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
   }
 
   // Marker creation helper
-  const addMarker = ({ position, title, label, onClick }) => {
+  const addMarker = ({ position, title, label, onClick }: { position: { lat: number, lng: number }, title: string, label: { bg: string, color: string, text: string }, onClick: () => void }) => {
     const { AdvancedMarkerElement } = markersRef.current
+    if (!AdvancedMarkerElement) return null
+
     const div = document.createElement('div')
     div.style.background = label.bg
     div.style.color = label.color
@@ -224,13 +232,15 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
       gmpClickable: true
     })
 
-    marker.addListener('click', () => onClick(marker))
+    marker.addListener('click', onClick)
     return marker
   }
 
   // Loading marker helper
-  const addLoadingMarker = (position) => {
+  const addLoadingMarker = (position: { lat: number, lng: number }) => {
     const { AdvancedMarkerElement } = markersRef.current
+    if (!AdvancedMarkerElement) return null
+
     const container = document.createElement('div')
     container.style.position = 'relative'
     container.style.display = 'flex'
@@ -299,7 +309,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
       setParkingSpots((prev) => prev.slice(0, parkingLimit))
       setParkingSigns((prev) => prev.slice(0, parkingLimit))
     }
-  }, [parkingLimit, selectedLocation])
+  }, [parkingLimit, selectedLocation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render markers
   useEffect(() => {
@@ -314,7 +324,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
         position: { lat: spot.lat, lng: spot.lng },
         title: 'Public Parking',
         label: { bg: '#16a34a', color: 'black', text: 'P' },
-        onClick: (marker) => {
+        onClick: () => {
           // console.log('🎯 Parking spot marker clicked:', spot)
           const addressText = spot.address || `${spot.lat}, ${spot.lng}`
           const encodedAddress = encodeURIComponent(addressText)
@@ -336,12 +346,14 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           // console.log('📝 Content length:', content.length)
           // console.log('📝 Content type:', typeof content)
 
+          if (!infoWindowRef.current) return
+
           infoWindowRef.current.setContent(content)
           // console.log('✅ Content set to InfoWindow')
-          
+
           infoWindowRef.current.setPosition({ lat: spot.lat, lng: spot.lng })
           // console.log('📍 Position set')
-          
+
           infoWindowRef.current.open(mapInstanceRef.current)
           // console.log('🚀 InfoWindow opened')
 
@@ -367,7 +379,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
               findBtn.addEventListener('click', () => {
                 setSelectedLocation({ lat: spot.lat, lng: spot.lng })
                 searchParkingAt(spot.lat, spot.lng)
-                infoWindowRef.current.close() // ✅ close popup
+                infoWindowRef.current?.close() // ✅ close popup
               })
             }
 
@@ -389,22 +401,22 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           })
         }
       })
-    ) : []
+    ).filter(Boolean) as google.maps.marker.AdvancedMarkerElement[] : []
 
     // Parking Signs (filter by status and category)
     markersRef.current.signs = showParkingSigns ? parkingSigns
       .map((sign) =>
         addMarker({
         position: { lat: sign.lat, lng: sign.lng },
-        title: sign.text ? `Parking Sign: ${sign.text.substring(0, 50)}...` : 'Parking Sign',
+        title: sign.description ? `Parking Sign: ${sign.description.substring(0, 50)}...` : 'Parking Sign',
         label: { 
           bg: '#ef4444', 
           color: 'white', 
           text: 'S' 
         },
-        onClick: (marker) => {
+        onClick: () => {
           // console.log('🪧 Parking sign marker clicked:', sign)
-          const signText = sign.text || 'No text available'
+          const signText = sign.description || sign.rules || 'No text available'
           const description = sign.description || 'Unknown Sign Type'
           const distance = sign.distance_m ? `${Math.round(sign.distance_m)} meters away` : ''
           const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${sign.lat},${sign.lng}`
@@ -424,9 +436,11 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           // console.log('📝 Sign content length:', content.length)
           // console.log('📝 Sign content type:', typeof content)
 
+          if (!infoWindowRef.current) return
+
           infoWindowRef.current.setContent(content)
           // console.log('✅ Sign content set to InfoWindow')
-          
+
           infoWindowRef.current.setPosition({ lat: sign.lat + 0.0001, lng: sign.lng })
           // console.log('📍 Sign position set')
           
@@ -467,15 +481,13 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           })
         }
       })
-    ) : []
+    ).filter(Boolean) as google.maps.marker.AdvancedMarkerElement[] : []
 
     fitMapBounds()
-  }, [parkingSpots, parkingSigns, fitMapBounds, showParkingSpots, showParkingSigns, parkingLimit])
+  }, [parkingSpots, parkingSigns, fitMapBounds, showParkingSpots, showParkingSigns, parkingLimit]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Search parking
-  const searchParkingAt = async (lat, lng) => {
-    setIsSearching(true)
-    setSearchLocation({ lat, lng })
+  const searchParkingAt = async (lat: number, lng: number) => {
     
     // Add loading marker
     let loadingMarker = null
@@ -485,9 +497,9 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
     
     try {
       const result = await apiClient.searchParking(lat, lng)
-      setParkingSpots((result.public_parking_results || []).slice(0, parkingLimit))
+      setParkingSpots((result.public_parking_results || []).slice(0, parkingLimit) as PublicParkingFacility[])
       // console.log('Got parking sign results:', result.parking_sign_results)
-      setParkingSigns((result.parking_sign_results || []).slice(0, parkingLimit))
+      setParkingSigns((result.parking_sign_results || []).slice(0, parkingLimit) as ParkingSign[])
       
       // Center the map on the search location
       if (mapInstanceRef.current) {
@@ -502,10 +514,8 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
     } finally {
       // Remove loading marker
       if (loadingMarker) {
-        loadingMarker.setMap(null)
+        loadingMarker.map = null
       }
-      setIsSearching(false)
-      setSearchLocation(null)
     }
   }
 
@@ -530,11 +540,11 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
     )
   }, [inputValue])
 
-  const handlePredictionClick = (p) => {
+  const handlePredictionClick = (p: google.maps.places.AutocompletePrediction) => {
     if (!placesServiceRef.current) return
     setSelectedPredictionId(p.place_id)
     placesServiceRef.current.getDetails({ placeId: p.place_id }, (place) => {
-      if (!place.geometry) return
+      if (!place?.geometry?.location) return
       const lat = place.geometry.location.lat()
       const lng = place.geometry.location.lng()
       setSelectedLocation({ lat, lng })
@@ -562,7 +572,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
     await searchParkingAt(selectedLocation.lat, selectedLocation.lng)
   }
 
-  const handleSaveParking = async (note) => {
+  const handleSaveParking = async (note?: string) => {
     try {
       if (!isLoaded || !isSignedIn || !user?.id) {
         toast.error('Sign in to save your parking location')
@@ -574,9 +584,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
       } else {
         const center = mapInstanceRef.current?.getCenter()
         if (center) {
-          const lat = typeof center.lat === 'function' ? center.lat() : center.lat
-          const lng = typeof center.lng === 'function' ? center.lng() : center.lng
-          point = { lat, lng }
+          point = { lat: center.lat(), lng: center.lng() }
         }
       }
       if (!point) return
@@ -586,7 +594,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
         try {
           const { results } = await geocoderRef.current.geocode({ location: point })
           address = results?.[0]?.formatted_address || null
-        } catch (e) {
+        } catch {
           // ignore geocode errors; we'll save coords only
         }
       }
@@ -615,7 +623,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           <SaveParkingToast
             visible={t.visible}
             onCancel={() => toast.dismiss(id)}
-            onSave={async (note) => { await handleSaveParking(note); toast.dismiss(id) }}
+            onSave={async (note: string) => { await handleSaveParking(note); toast.dismiss(id) }}
           />
         </div>
       </div>

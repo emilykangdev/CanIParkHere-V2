@@ -81,7 +81,7 @@ export interface LastParkedPointer {
 export interface ParkingHistoryResponse {
   items: ParkingEntry[];
   hasMore: boolean;
-  lastDoc?: any; // Firestore DocumentSnapshot
+  lastDoc?: unknown; // Firestore DocumentSnapshot
 }
 
 // User Data Hook Return Type
