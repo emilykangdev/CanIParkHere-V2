@@ -10,12 +10,15 @@ import type {
   FollowUpResponse,
   HealthCheckResponse
 } from '@/types';
+import { logger } from './logger';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-console.log('🔧 API Client initialized with base URL:', API_BASE);
-console.log('🔧 Environment:', process.env.NODE_ENV);
-console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+logger.debug('API Client initialized', { 
+  baseUrl: API_BASE,
+  environment: process.env.NODE_ENV,
+  configuredUrl: process.env.NEXT_PUBLIC_API_URL 
+});
 
 /**
  * Main API client with typed responses
@@ -29,7 +32,7 @@ export const apiClient = {
     file: File,
     datetime_str: string = new Date().toISOString()
   ): Promise<ParkingCheckResponse> {
-    console.log('📸 checkParkingImage called with:', { 
+    logger.debug('checkParkingImage called', { 
       fileName: file?.name, 
       fileSize: file?.size, 
       fileType: file?.type,
@@ -41,7 +44,7 @@ export const apiClient = {
     formData.append('datetime_str', datetime_str);
     
     const url = new URL('/api/check-parking-image', API_BASE).toString();
-    console.log('🌐 Making request to:', url);
+    logger.debug('Making API request', { url });
     
     try {
       const response = await fetch(url, {
@@ -49,24 +52,23 @@ export const apiClient = {
         body: formData,
       });
       
-      console.log('📡 Response received:', { 
+      logger.debug('API response received', { 
         status: response.status, 
         statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
+        ok: response.ok
       });
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error:', { status: response.status, error: errorText });
+        logger.error('API request failed', { status: response.status, error: errorText });
         throw new Error(`API Error ${response.status}: ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('✅ checkParkingImage successful:', result);
+      logger.info('checkParkingImage successful', { sessionId: result.session_id });
       return result;
     } catch (error) {
-      console.error('💥 checkParkingImage failed:', error);
+      logger.error('checkParkingImage failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   },
@@ -74,11 +76,11 @@ export const apiClient = {
 
 
   async searchParking(latitude: number, longitude: number): Promise<ParkingSearchResponse> {
-    console.log('🔍 searchParking called with:', { latitude, longitude });
+    logger.debug('searchParking called', { latitude, longitude });
     
     const url = '/api/search-parking';
     const fullUrl = new URL(url, API_BASE).toString();
-    console.log('🌐 Making request to:', fullUrl);
+    logger.debug('Making API request', { url: fullUrl });
     
     try {
       const response = await fetch(fullUrl, {
@@ -90,7 +92,7 @@ export const apiClient = {
         })
       });
       
-      console.log('📡 Response received:', { 
+      logger.debug('API response received', { 
         status: response.status, 
         statusText: response.statusText,
         ok: response.ok 
@@ -98,15 +100,18 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error:', { status: response.status, error: errorText });
+        logger.error('API request failed', { status: response.status, error: errorText });
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('✅ searchParking successful:', result);
+      logger.info('searchParking successful', { 
+        parkingSpots: result.public_parking_results?.length || 0,
+        parkingSigns: result.parking_sign_results?.length || 0
+      });
       return result;
     } catch (error) {
-      console.error('💥 searchParking failed:', error);
+      logger.error('searchParking failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   },
@@ -119,19 +124,14 @@ export const apiClient = {
     longitude: number,
     datetime: string = new Date().toISOString()
   ): Promise<LocationCheckResponse> {
-    console.log('📍 checkParkingLocation called with:', {
+    logger.debug('checkParkingLocation called', {
       latitude,
       longitude,
       datetime
     });
     
     const url = new URL('/api/check-parking-location', API_BASE).toString();
-    console.log('🌐 Making request to:', url);
-    console.log('📤 Request payload:', {
-      latitude,
-      longitude,
-      datetime
-    });
+    logger.debug('Making API request', { url });
     
     try {
       const response = await fetch(url, {
@@ -144,24 +144,23 @@ export const apiClient = {
         }),
       });
       
-      console.log('📡 Response received:', { 
+      logger.debug('API response received', { 
         status: response.status, 
         statusText: response.statusText,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
+        ok: response.ok
       });
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error:', { status: response.status, error: errorText });
+        logger.error('API request failed', { status: response.status, error: errorText });
         throw new Error(`API Error ${response.status}: ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('✅ checkParkingLocation successful:', result);
+      logger.info('checkParkingLocation successful', { canPark: result.canPark });
       return result;
     } catch (error) {
-      console.error('💥 checkParkingLocation failed:', error);
+      logger.error('checkParkingLocation failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   },
@@ -170,10 +169,10 @@ export const apiClient = {
    * Ask follow-up questions about a previous parking check
    */
   async followUpQuestion(session_id: string, question: string): Promise<FollowUpResponse> {
-    console.log('❓ followUpQuestion called with:', { session_id, question });
+    logger.debug('followUpQuestion called', { session_id, question });
     
     const url = new URL('/api/followup', API_BASE).toString();
-    console.log('🌐 Making request to:', url);
+    logger.debug('Making API request', { url });
     
     try {
       const response = await fetch(url, {
@@ -182,7 +181,7 @@ export const apiClient = {
         body: JSON.stringify({ session_id, question }),
       });
       
-      console.log('📡 Response received:', { 
+      logger.debug('API response received', { 
         status: response.status, 
         statusText: response.statusText,
         ok: response.ok 
@@ -190,15 +189,15 @@ export const apiClient = {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error:', { status: response.status, error: errorText });
+        logger.error('API request failed', { status: response.status, error: errorText });
         throw new Error(`API Error ${response.status}: ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('✅ followUpQuestion successful:', result);
+      logger.info('followUpQuestion successful');
       return result;
     } catch (error) {
-      console.error('💥 followUpQuestion failed:', error);
+      logger.error('followUpQuestion failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   },
@@ -207,30 +206,30 @@ export const apiClient = {
    * Health check endpoint
    */
   async healthCheck(): Promise<HealthCheckResponse> {
-    console.log('🏥 healthCheck called');
+    logger.debug('healthCheck called');
     
     const url = new URL('/api/health', API_BASE).toString();
-    console.log('🌐 Making request to:', url);
+    logger.debug('Making API request', { url });
     
     try {
       const response = await fetch(url);
       
-      console.log('📡 Response received:', { 
+      logger.debug('API response received', { 
         status: response.status, 
         statusText: response.statusText,
         ok: response.ok 
       });
       
       if (!response.ok) {
-        console.error('❌ Health check failed:', { status: response.status });
+        logger.error('Health check failed', { status: response.status });
         throw new Error(`Health check failed: ${response.status}`);
       }
       
       const result = await response.json();
-      console.log('✅ healthCheck successful:', result);
+      logger.info('healthCheck successful', { status: result.status });
       return result;
     } catch (error) {
-      console.error('💥 healthCheck failed:', error);
+      logger.error('healthCheck failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -240,7 +239,7 @@ export const apiClient = {
  * Helper function to handle API errors consistently
  */
 export function formatApiError(error: Error): string {
-  console.log('🔧 formatApiError called with:', error);
+  logger.debug('formatApiError called', { error: error.message });
   
   if (error.message.includes('503')) {
     return 'Service temporarily unavailable. Please try again later.';

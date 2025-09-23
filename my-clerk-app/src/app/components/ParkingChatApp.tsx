@@ -7,6 +7,7 @@ import { apiClient, formatApiError } from '../lib/apiClient'
 import { useUserData } from '../hooks/useUserData'
 import type { ChatMessage, MessageData } from '@/types'
 import { MessageType, MessageDataType } from '@/types'
+import posthog from 'posthog-js'
 
 interface ParkingChatAppProps {
   setShowSidebar: (show: boolean) => void;
@@ -134,7 +135,10 @@ export default function ParkingChatApp({ setShowSidebar }: ParkingChatAppProps) 
       {/* Header */}
         <div className="relative bg-gradient-to-r from-blue-200 to-blue-300 p-4 flex items-center shadow-md z-10">
         <button
-            onClick={() => setShowSidebar(true)}
+            onClick={() => {
+              setShowSidebar(true)
+              posthog.capture('sidebar_opened', { source: 'chat_view' })
+            }}
             className="p-2 rounded-full bg-white/50 hover:bg-white/70 transition"
         >
             <Menu className="w-5 h-5" />

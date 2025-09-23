@@ -325,7 +325,12 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
         title: 'Public Parking',
         label: { bg: '#16a34a', color: 'black', text: 'P' },
         onClick: () => {
-          // console.log('🎯 Parking spot marker clicked:', spot)
+          posthog.capture('parking_spot_marker_clicked', {
+            lat: spot.lat,
+            lng: spot.lng,
+            address: spot.address
+          })
+          
           const addressText = spot.address || `${spot.lat}, ${spot.lng}`
           const encodedAddress = encodeURIComponent(addressText)
           const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`
@@ -362,6 +367,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
             const btn = document.getElementById('copy-btn')
             if (btn) {
               btn.addEventListener('click', () => {
+                posthog.capture('address_copied', { source: 'parking_spot' })
                 copyToClipboard(addressText, () => {
                   btn.innerText = 'Copied!'
                   btn.style.background = '#16a34a'
@@ -415,7 +421,13 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
           text: 'S' 
         },
         onClick: () => {
-          // console.log('🪧 Parking sign marker clicked:', sign)
+          posthog.capture('parking_sign_marker_clicked', {
+            lat: sign.lat,
+            lng: sign.lng,
+            description: sign.description,
+            distance_m: sign.distance_m
+          })
+          
           const signText = sign.description || sign.rules || 'No text available'
           const description = sign.description || 'Unknown Sign Type'
           const distance = sign.distance_m ? `${Math.round(sign.distance_m)} meters away` : ''
@@ -452,6 +464,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
             const btn = document.getElementById('copy-btn')
             if (btn) {
               btn.addEventListener('click', () => {
+                posthog.capture('sign_text_copied', { source: 'parking_sign' })
                 copyToClipboard(signText, () => {
                   btn.innerText = '✅ Copied!'
                   btn.style.background = '#16a34a'
@@ -643,7 +656,10 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
 
       {/* Menu Button */}
       <button
-        onClick={() => setShowSidebar(true)}
+        onClick={() => {
+          setShowSidebar(true)
+          posthog.capture('sidebar_opened', { source: 'map_view' })
+        }}
         className="fixed top-4 left-4 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-3 rounded-lg shadow-lg border border-white/20 dark:border-gray-700/50 hover:bg-white dark:hover:bg-gray-800 transition-colors"
       >
         <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />

@@ -248,7 +248,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }: 
             </div>
 
             {/* Settings / Actions */}
-            <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
+            {/* <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
               <div className="p-3 space-y-2">
                 <h3 className="text-sm font-semibold text-black dark:text-white">Actions</h3>
                 <button
@@ -262,7 +262,7 @@ export default function Sidebar({ isOpen, onClose, currentView, onViewChange }: 
                   Save Parking
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Terms & Conditions */}
             <div className="rounded-lg bg-white/20 dark:bg-gray-800/30 backdrop-blur-md border border-white/20 dark:border-gray-700">
