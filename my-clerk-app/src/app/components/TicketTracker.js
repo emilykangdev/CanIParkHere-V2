@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, X, Check, MapPin, Camera, Calendar, DollarSign } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, X, MapPin, Camera, Calendar, DollarSign } from 'lucide-react'
 import { ticketService } from '../lib/ticketService'
 
 export default function TicketTracker({ isOpen, onClose }) {
@@ -22,11 +22,11 @@ export default function TicketTracker({ isOpen, onClose }) {
     if (isOpen && currentUser) {
       loadTickets()
     }
-  }, [isOpen, currentUser])
+  }, [isOpen, currentUser, loadTickets])
 
-  const loadTickets = async () => {
+  const loadTickets = useCallback(async () => {
     if (!currentUser) return
-    
+
     setLoading(true)
     try {
       const userTickets = await ticketService.getUserTickets(currentUser.uid)
@@ -36,7 +36,7 @@ export default function TicketTracker({ isOpen, onClose }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser])
 
   const handleAddTicket = async (e) => {
     e.preventDefault()

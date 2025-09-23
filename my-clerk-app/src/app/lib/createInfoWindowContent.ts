@@ -1,10 +1,18 @@
+interface ParkingSignInfoWindowProps {
+  signText: string;
+  description?: string;
+  distance?: string;
+  googleMapsUrl: string;
+  appleMapsUrl: string;
+}
+
 export function createParkingSignInfoWindow({
   signText,
   description,
   distance,
   googleMapsUrl,
   appleMapsUrl
-}) {
+}: ParkingSignInfoWindowProps): string {
   
   return `
     <div style="
@@ -91,13 +99,22 @@ export function createParkingSignInfoWindow({
   `
 }
 
+interface InfoWindowContentProps {
+  title: string;
+  description: string;
+  googleMapsUrl: string;
+  appleMapsUrl: string;
+  copyLabel: string;
+  showFindParking?: boolean;
+}
+
 export function createInfoWindowContent({
   title,
   description,
   googleMapsUrl,
   appleMapsUrl,
   copyLabel
-}) {
+}: InfoWindowContentProps): string {
   return `
     <div style="
       font-family: sans-serif;

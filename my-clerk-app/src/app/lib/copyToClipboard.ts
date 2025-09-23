@@ -1,4 +1,8 @@
-export async function copyToClipboard(text, onSuccess, onError) {
+export async function copyToClipboard(
+  text: string,
+  onSuccess?: () => void,
+  onError?: (error: Error) => void
+): Promise<void> {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text)
@@ -14,6 +18,6 @@ export async function copyToClipboard(text, onSuccess, onError) {
     if (onSuccess) onSuccess()
   } catch (err) {
     console.error('Copy failed', err)
-    if (onError) onError(err)
+    if (onError) onError(err as Error)
   }
 }

@@ -18,7 +18,7 @@ export const metadata = {
   description: "AI-powered parking sign analysis - Find out if you can legally park at any location",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en">

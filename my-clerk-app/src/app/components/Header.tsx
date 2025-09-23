@@ -2,7 +2,12 @@
 import { Menu } from 'lucide-react'
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 
-export default function Header({ showMenu = true, onMenuClick }) {
+interface HeaderProps {
+  showMenu?: boolean;
+  onMenuClick?: () => void;
+}
+
+export default function Header({ showMenu = true, onMenuClick }: HeaderProps) {
   return (
     <div className="relative bg-gradient-to-r from-blue-200 to-blue-300 p-4 flex items-center justify-between shadow-md z-10">
       <div className="flex items-center gap-2">
@@ -14,8 +19,16 @@ export default function Header({ showMenu = true, onMenuClick }) {
       </div>
       <div className="flex items-center gap-2">
         <SignedOut>
-          <SignInButton className="px-3 py-1 bg-white/70 rounded-md text-sm hover:bg-white transition" />
-          <SignUpButton className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition" />
+          <SignInButton>
+            <button className="px-3 py-1 bg-white/70 rounded-md text-sm hover:bg-white transition">
+              Sign In
+            </button>
+          </SignInButton>
+          <SignUpButton>
+            <button className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition">
+              Sign Up
+            </button>
+          </SignUpButton>
         </SignedOut>
         <SignedIn>
           <UserButton />

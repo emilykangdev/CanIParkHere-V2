@@ -3,32 +3,11 @@
  * This should match the backend MessageType enum and response models
  */
 
-// Message Types (matches backend MessageType enum)
-export const MessageType = Object.freeze({
-  BOT: 'bot',
-  USER: 'user', 
-  PARKING: 'parking',
-  FOLLOWUP: 'followup',
-  ERROR: 'error'
-});
+import type { ChatMessage, MessageData } from '@/types';
+import { MessageType, MessageDataType, ParkingCategory } from '@/types';
 
-// Data Types for message.data field
-export const MessageDataType = Object.freeze({
-  COMPRESSION: 'compression',
-  ERROR_WITH_PREVIEW: 'error_with_preview',
-  PARKING_RESULT: 'parking_result',
-  LOCATION_RESULT: 'location_result'
-});
-
-// Parking Categories (matches backend ParkingCategory enum)
-export const ParkingCategory = Object.freeze({
-  UNRESTRICTED: 'Unrestricted Parking',
-  NO_PARKING: 'No Parking Allowed',
-  RESTRICTED_ZONE: 'Restricted Parking Zone', 
-  PAID_PARKING: 'Paid Parking',
-  TIME_LIMITED: 'Time Limited Parking',
-  CARPOOL: 'Carpool Parking'
-});
+// Re-export types for backward compatibility
+export { MessageType, MessageDataType, ParkingCategory };
 
 /**
  * Base message structure
@@ -93,8 +72,8 @@ export const MessageFactory = {
   /**
    * Create a bot message
    */
-  bot: (content, data = null) => ({
-    id: Date.now(),
+  bot: (content: string, data?: MessageData): ChatMessage => ({
+    id: crypto.randomUUID(),
     type: MessageType.BOT,
     content,
     data,
@@ -104,8 +83,8 @@ export const MessageFactory = {
   /**
    * Create a user message
    */
-  user: (content, data = null) => ({
-    id: Date.now(),
+  user: (content: string, data?: MessageData): ChatMessage => ({
+    id: crypto.randomUUID(),
     type: MessageType.USER,
     content,
     data,
@@ -115,8 +94,8 @@ export const MessageFactory = {
   /**
    * Create a parking result message
    */
-  parking: (content, parkingData) => ({
-    id: Date.now(),
+  parking: (content: string, parkingData: MessageData): ChatMessage => ({
+    id: Date.now().toString(),
     type: MessageType.PARKING,
     content,
     data: {
@@ -129,8 +108,8 @@ export const MessageFactory = {
   /**
    * Create an error message
    */
-  error: (content, errorData = null) => ({
-    id: Date.now(),
+  error: (content: string, errorData?: MessageData): ChatMessage => ({
+    id: Date.now().toString(),
     type: MessageType.ERROR,
     content,
     data: errorData,
@@ -140,8 +119,8 @@ export const MessageFactory = {
   /**
    * Create a compression preview message
    */
-  compression: (content, compressionData) => ({
-    id: Date.now(),
+  compression: (content: string, compressionData: MessageData) => ({
+    id: Date.now().toString(),
     type: MessageType.USER,
     content,
     data: {
@@ -154,8 +133,8 @@ export const MessageFactory = {
   /**
    * Create an error with preview message
    */
-  errorWithPreview: (content, previewData) => ({
-    id: Date.now(),
+  errorWithPreview: (content: string, previewData: MessageData) => ({
+    id: Date.now().toString(),
     type: MessageType.ERROR,
     content,
     data: {
@@ -170,14 +149,15 @@ export const MessageFactory = {
  * Validation helpers
  */
 export const MessageValidator = {
-  isValidType: (type) => Object.values(MessageType).includes(type),
-  isValidDataType: (dataType) => Object.values(MessageDataType).includes(dataType),
-  
-  hasValidStructure: (message) => {
+  isValidType: (type: unknown) => Object.values(MessageType).includes(type as MessageType),
+  isValidDataType: (dataType: unknown) => Object.values(MessageDataType).includes(dataType as MessageDataType),
+
+  hasValidStructure: (message: unknown) => {
+    const msg = message as Record<string, unknown>;
     return message &&
-           typeof message.id === 'number' &&
-           MessageValidator.isValidType(message.type) &&
-           typeof message.content === 'string' &&
-           message.timestamp instanceof Date;
+           typeof msg.id === 'string' &&
+           MessageValidator.isValidType(msg.type) &&
+           typeof msg.content === 'string' &&
+           msg.timestamp instanceof Date;
   }
 };

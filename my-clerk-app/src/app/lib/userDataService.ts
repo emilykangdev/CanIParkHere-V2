@@ -12,8 +12,9 @@ import { getAuth, signInWithCustomToken } from 'firebase/auth'
  * Create or update user profile in Firestore
  * @param {Object} clerkUser - Clerk user object (for basic info only)
  */
-export async function syncUserProfile(clerkUser) {
-  if (!clerkUser?.id) return null
+export async function syncUserProfile(clerkUser: unknown) {
+  const user = clerkUser as Record<string, unknown>;
+  if (!user?.id) return null
 
   // Use the same API base as other backend calls
   const API_BASE = process.env.NODE_ENV === 'development' 
@@ -22,7 +23,7 @@ export async function syncUserProfile(clerkUser) {
 
   const res = await fetch(`${API_BASE}/get-firebase-token`, {
     method: "POST",
-    headers: {Authorization: `Bearer ${clerkUser.id}`},
+    headers: {Authorization: `Bearer ${user.id}`},
   });
   
   if (!res.ok) {
@@ -34,15 +35,15 @@ export async function syncUserProfile(clerkUser) {
   const auth = getAuth();
   await signInWithCustomToken(auth, customToken);
 
-  const userRef = doc(db, 'users', clerkUser.id)
+  const userRef = doc(db, 'users', user.id as string)
   
   const userData = {
-    clerkId: clerkUser.id,
-    email: clerkUser.emailAddresses?.[0]?.emailAddress || null,
-    firstName: clerkUser.firstName || null,
-    lastName: clerkUser.lastName || null,
-    fullName: clerkUser.fullName || null,
-    imageUrl: clerkUser.imageUrl || null,
+    clerkId: user.id,
+    email: ((user.emailAddresses as unknown[])?.[0] as Record<string, unknown>)?.emailAddress || null,
+    firstName: user.firstName || null,
+    lastName: user.lastName || null,
+    fullName: user.fullName || null,
+    imageUrl: user.imageUrl || null,
     lastSeen: serverTimestamp(),
     updatedAt: serverTimestamp()
   }
@@ -84,7 +85,7 @@ export async function syncUserProfile(clerkUser) {
  * Get user profile from Firestore
  * @param {string} clerkUserId - Clerk user ID
  */
-export async function getUserProfile(clerkUserId) {
+export async function getUserProfile(clerkUserId: string) {
   if (!clerkUserId) return null
 
   try {
@@ -106,7 +107,7 @@ export async function getUserProfile(clerkUserId) {
  * @param {string} clerkUserId - Clerk user ID
  * @param {Object} preferences - User preferences object
  */
-export async function updateUserPreferences(clerkUserId, preferences) {
+export async function updateUserPreferences(clerkUserId: string, preferences: Record<string, unknown>) {
   if (!clerkUserId) return null
 
   try {
@@ -127,7 +128,7 @@ export async function updateUserPreferences(clerkUserId, preferences) {
  * @param {string} clerkUserId - Clerk user ID
  * @param {string} statType - Type of stat to increment
  */
-export async function incrementUserStat(clerkUserId, statType) {
+export async function incrementUserStat(clerkUserId: string, statType: string) {
   if (!clerkUserId || !['signsAnalyzed', 'locationsSearched', 'pinsCreated', 'ticketsReported'].includes(statType)) return
 
   try {
@@ -154,7 +155,7 @@ export async function incrementUserStat(clerkUserId, statType) {
  * @param {string} clerkUserId - Clerk user ID
  * @param {Object} pinData - Pin data object
  */
-export async function saveParkingPin(clerkUserId, pinData) {
+export async function saveParkingPin(clerkUserId: string, pinData: Record<string, unknown>) {
   if (!clerkUserId) return null
 
   try {
@@ -177,7 +178,7 @@ export async function saveParkingPin(clerkUserId, pinData) {
  * @param {number} lng - Longitude
  * @param {number} radiusKm - Radius in kilometers
  */
-export async function getParkingPinsInArea(lat, lng, radiusKm = 1) {
+export async function getParkingPinsInArea(lat: number, lng: number, radiusKm: number = 1) {
   try {
     // Simple bounding box query (for a more precise circle, you'd need geo libraries)
     const latDelta = radiusKm / 111 // Rough conversion: 1 degree ≈ 111km
@@ -192,7 +193,7 @@ export async function getParkingPinsInArea(lat, lng, radiusKm = 1) {
     )
     
     const querySnapshot = await getDocs(q)
-    const pins = []
+    const pins: unknown[] = []
     
     querySnapshot.forEach((doc) => {
       const data = doc.data()
@@ -214,7 +215,7 @@ export async function getParkingPinsInArea(lat, lng, radiusKm = 1) {
  * @param {string} clerkUserId - Clerk user ID
  * @param {Object} ticketData - Ticket data object
  */
-export async function saveParkingTicket(clerkUserId, ticketData) {
+export async function saveParkingTicket(clerkUserId: string, ticketData: Record<string, unknown>) {
   if (!clerkUserId) return null
 
   try {
@@ -235,7 +236,7 @@ export async function saveParkingTicket(clerkUserId, ticketData) {
  * Get user's parking tickets
  * @param {string} clerkUserId - Clerk user ID
  */
-export async function getUserParkingTickets(clerkUserId) {
+export async function getUserParkingTickets(clerkUserId: string) {
   if (!clerkUserId) return []
 
   try {
@@ -246,7 +247,7 @@ export async function getUserParkingTickets(clerkUserId) {
     )
     
     const querySnapshot = await getDocs(q)
-    const tickets = []
+    const tickets: unknown[] = []
     
     querySnapshot.forEach((doc) => {
       tickets.push({ id: doc.id, ...doc.data() })
@@ -264,7 +265,7 @@ export async function getUserParkingTickets(clerkUserId) {
  * @param {string} clerkUserId - Clerk user ID  
  * @param {Object} spotData - Parking spot data
  */
-export async function saveSharedParkingSpot(clerkUserId, spotData) {
+export async function saveSharedParkingSpot(clerkUserId: string, spotData: Record<string, unknown>) {
   if (!clerkUserId) return null
 
   try {

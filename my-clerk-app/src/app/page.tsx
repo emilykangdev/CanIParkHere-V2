@@ -1,17 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { SignedIn, SignedOut } from '@clerk/nextjs'
+import { useState } from 'react'
 import ParkingChatApp from './components/ParkingChatApp'
 import ParkingMapView from './components/ParkingMapView'
 import Sidebar from './components/Sidebar'
 
 export default function Home() {
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [currentView, setCurrentView] = useState('map') // 'map' or 'chat'
+  const [showSidebar, setShowSidebar] = useState<boolean>(false)
+  const [currentView, setCurrentView] = useState<'map' | 'chat'>('map')
   
   // Preserve scroll position when switching views
-  const handleViewChange = (newView) => {
+  const handleViewChange = (newView: 'map' | 'chat') => {
     // Store current scroll position
     const scrollY = window.scrollY
     
