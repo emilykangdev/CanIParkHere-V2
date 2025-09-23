@@ -6,6 +6,13 @@ Firebase token generation and auth-related endpoints
 from fastapi import APIRouter, Request, HTTPException
 import structlog
 
+try:
+    import firebase_admin
+    from firebase_admin import auth
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    FIREBASE_AVAILABLE = False
+
 log = structlog.get_logger()
 
 router = APIRouter(tags=["authentication"])
@@ -37,10 +44,10 @@ async def get_firebase_token(request: Request):
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
 
     # Create Firebase custom token for this Clerk user ID
+    if not FIREBASE_AVAILABLE:
+        log.error("Firebase Admin SDK not available")
+        raise HTTPException(status_code=503, detail="Firebase service not available")
     try:
-        import firebase_admin
-        from firebase_admin import auth
-        
         # Check if Firebase is initialized
         if not firebase_admin._apps:
             log.error("Firebase not initialized")

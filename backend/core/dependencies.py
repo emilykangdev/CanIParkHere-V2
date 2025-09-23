@@ -105,17 +105,12 @@ class ServiceContainer:
         return status
 
 
-# Global service container
-_service_container: Optional[ServiceContainer] = None
-
-
+@lru_cache(maxsize=1)
 def get_service_container() -> ServiceContainer:
-    """Get the global service container"""
-    global _service_container
-    if _service_container is None:
-        _service_container = ServiceContainer()
-        _service_container.initialize()
-    return _service_container
+    """Get the global service container (singleton)"""
+    container = ServiceContainer()
+    container.initialize()
+    return container
 
 
 # FastAPI dependency functions

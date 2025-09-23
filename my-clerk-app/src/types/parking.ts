@@ -76,7 +76,7 @@ export interface PublicParkingFacility {
   available_spots?: number;
   hourly_rate?: number;
   daily_rate?: number;
-  facility_type: 'garage' | 'lot' | 'street';
+  facility_type?: 'garage' | 'lot' | 'street';
   hours?: string;
   payment_methods?: string[];
   distance_m?: number;

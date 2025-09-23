@@ -5,6 +5,7 @@ Clean service layer with proper error handling
 
 import boto3
 from botocore.exceptions import ClientError
+from botocore.config import Config
 from typing import Optional, List, Dict, Any
 import structlog
 
@@ -20,12 +21,23 @@ class AWSService:
         """Initialize AWS service with credentials"""
         self.region = region
         
+        # Configure timeouts and retry policy
+        config = Config(
+            connect_timeout=5,
+            read_timeout=60,
+            retries={
+                'max_attempts': 3,
+                'mode': 'standard'
+            }
+        )
+        
         # Initialize S3 client
         self.s3_client = boto3.client(
             's3',
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
-            region_name=region
+            region_name=region,
+            config=config
         )
         
         # Initialize Athena client
@@ -33,7 +45,8 @@ class AWSService:
             'athena',
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
-            region_name=region
+            region_name=region,
+            config=config
         )
         
         log.info(f"AWS service initialized for region: {region}")
@@ -41,8 +54,12 @@ class AWSService:
     def list_s3_files(self, bucket: str) -> List[str]:
         """List objects in S3 bucket"""
         try:
-            response = self.s3_client.list_objects_v2(Bucket=bucket)
-            files = [obj["Key"] for obj in response.get("Contents", [])]
+            paginator = self.s3_client.get_paginator("list_objects_v2")
+            files = []
+            
+            for page in paginator.paginate(Bucket=bucket):
+                files.extend([obj["Key"] for obj in page.get("Contents", [])])
+            
             log.info(f"Listed {len(files)} files from bucket {bucket}")
             return files
         except ClientError as e:

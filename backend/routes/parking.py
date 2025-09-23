@@ -32,18 +32,19 @@ async def check_parking_image(
     
     Returns detailed parking analysis including rules and recommendations.
     """
-    log.info(f"Received image upload: {file.filename}, size: {file.size}")
-    
+    log.info(f"Received image upload: {file.filename}, content_type: {file.content_type}")
+
     # Validate file
     if not file.content_type or not file.content_type.startswith('image/'):
         raise InvalidImageError("File must be an image")
     
-    if file.size and file.size > 10 * 1024 * 1024:  # 10MB limit
-        raise InvalidImageError("Image file too large (max 10MB)")
-    
     try:
         # Read image data
         image_bytes = await file.read()
+
+        # Validate size (10MB limit)
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise InvalidImageError("Image file too large (max 10MB)")
         
         if not image_bytes:
             raise InvalidImageError("Empty image file")

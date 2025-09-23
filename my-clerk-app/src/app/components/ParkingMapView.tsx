@@ -87,7 +87,7 @@ export default function ParkingMapView({ setShowSidebar }: ParkingMapViewProps) 
         mapInstanceRef.current.addListener('click', (e: google.maps.MapMouseEvent & { placeId?: string, stop?: () => void }) => {
 
           if (e.placeId) {
-            e.stop() // Prevent Google's default InfoWindow
+            e.stop?.() // Prevent Google's default InfoWindow
 
             if (!placesServiceRef.current) return
 

@@ -3,6 +3,7 @@ Custom Exception Classes and Error Handlers
 Centralized error handling for the application
 """
 
+from typing import Optional
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -25,7 +26,7 @@ class ParkingAnalysisError(Exception):
 
 class ServiceUnavailableError(Exception):
     """Custom exception for service unavailability"""
-    def __init__(self, service_name: str, message: str = None):
+    def __init__(self, service_name: str, message: Optional[str] = None):
         self.service_name = service_name
         self.message = message or f"{service_name} service is unavailable"
         super().__init__(self.message)
