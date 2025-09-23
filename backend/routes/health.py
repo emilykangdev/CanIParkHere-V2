@@ -10,6 +10,7 @@ import structlog
 from models.responses import HealthCheckResponse
 from models.internal import ServiceStatus
 from core.dependencies import get_service_status
+from config.settings import settings
 
 log = structlog.get_logger()
 
@@ -60,21 +61,25 @@ async def detailed_service_status(
     
     return {
         "openai": {
-            "configured": service_status.openai,
+            "configured": settings.has_openai_config,
+            "healthy": service_status.openai,
             "status": "healthy" if service_status.openai else "unavailable"
         },
         "aws": {
             "s3": {
-                "configured": service_status.aws_s3,
+                "configured": settings.has_aws_config,
+                "healthy": service_status.aws_s3,
                 "status": "healthy" if service_status.aws_s3 else "unavailable"
             },
             "athena": {
-                "configured": service_status.aws_athena,
+                "configured": settings.has_aws_config,
+                "healthy": service_status.aws_athena,
                 "status": "healthy" if service_status.aws_athena else "unavailable"
             }
         },
         "firebase": {
-            "configured": service_status.firebase,
+            "configured": settings.has_firebase_config,
+            "healthy": service_status.firebase,
             "status": "healthy" if service_status.firebase else "unavailable"
         },
         "overall": {
