@@ -45,19 +45,21 @@ async def check_parking_image(
         # Validate size (10MB limit)
         if len(image_bytes) > 10 * 1024 * 1024:
             raise InvalidImageError("Image file too large (max 10MB)")
-        
+
         if not image_bytes:
             raise InvalidImageError("Empty image file")
-        
+
         # Analyze image
         result = await parking_service.analyze_parking_image(image_bytes, datetime_str)
-        
+
         log.info(f"Image analysis completed: {result.session_id}")
         return result
-        
+
+    except (InvalidImageError, ServiceUnavailableError, ParkingAnalysisError):
+        raise
     except Exception as e:
-        log.error(f"Image analysis failed: {e}")
-        raise ParkingAnalysisError(f"Failed to analyze image: {str(e)}")
+        log.error(f"Image analysis failed: {e}", exc_info=True)
+        raise ParkingAnalysisError("Failed to analyze image")
 
 
 @router.post("/search-parking", response_model=ParkingSearchResponse)
@@ -78,13 +80,15 @@ async def search_parking(
     
     try:
         result = await parking_service.search_parking(request)
-        
+
         log.info(f"Search completed: {len(result.parking_sign_results)} signs, {len(result.public_parking_results)} facilities")
         return result
-        
+
+    except (InvalidImageError, ServiceUnavailableError, ParkingAnalysisError):
+        raise
     except Exception as e:
-        log.error(f"Parking search failed: {e}")
-        raise ParkingAnalysisError(f"Failed to search parking: {str(e)}")
+        log.error(f"Parking search failed: {e}", exc_info=True)
+        raise ParkingAnalysisError("Failed to search parking")
 
 
 @router.post("/check-parking-location", response_model=LocationCheckResponse)
@@ -105,13 +109,15 @@ async def check_parking_location(
     
     try:
         result = await parking_service.check_location(request)
-        
+
         log.info(f"Location check completed: can_park={result.canPark}")
         return result
-        
+
+    except (InvalidImageError, ServiceUnavailableError, ParkingAnalysisError):
+        raise
     except Exception as e:
-        log.error(f"Location check failed: {e}")
-        raise ParkingAnalysisError(f"Failed to check location: {str(e)}")
+        log.error(f"Location check failed: {e}", exc_info=True)
+        raise ParkingAnalysisError("Failed to check location")
 
 
 @router.post("/followup", response_model=FollowUpResponse)
@@ -131,10 +137,12 @@ async def followup_question(
     
     try:
         result = await parking_service.answer_followup(request)
-        
+
         log.info(f"Follow-up completed for session: {request.session_id}")
         return result
-        
+
+    except (InvalidImageError, ServiceUnavailableError, ParkingAnalysisError):
+        raise
     except Exception as e:
-        log.error(f"Follow-up failed: {e}")
-        raise ParkingAnalysisError(f"Failed to answer follow-up: {str(e)}")
+        log.error(f"Follow-up failed: {e}", exc_info=True)
+        raise ParkingAnalysisError("Failed to answer follow-up")

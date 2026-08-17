@@ -4,7 +4,7 @@ Internal Data Models for Business Logic
 
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class ParkingSignData(BaseModel):
@@ -32,7 +32,7 @@ class SessionData(BaseModel):
     session_id: str = Field(..., description="Unique session identifier")
     original_request: Dict[str, Any] = Field(..., description="Original request data")
     analysis_result: Dict[str, Any] = Field(..., description="Analysis result data")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Session creation time")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Session creation time")
     expires_at: Optional[datetime] = Field(None, description="Session expiration time")
 
 

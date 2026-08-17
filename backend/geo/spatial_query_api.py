@@ -1,6 +1,5 @@
 import geopandas as gpd
 from shapely.geometry import Point
-import matplotlib.pyplot as plt
 import boto3
 import time
 import os
@@ -83,24 +82,28 @@ def get_signs_nearby(lat, lon, athena_client, log, radius_meters=500, debug=Fals
     table_name = os.getenv("AWS_TABLE_SIG")
     output_location = os.getenv("AWS_ATHENA_OUTPUT")
 
+    # Numeric values are bound via ExecutionParameters (Athena "?" placeholders)
+    # rather than interpolated into the SQL text. Database/table identifiers still
+    # come from env vars via f-string since Athena cannot parameterize identifiers.
     query = f"""
     WITH input_point AS (
-        SELECT ST_Point({lon}, {lat}) AS geom
+        SELECT ST_Point(?, ?) AS geom
     )
     SELECT
         s.*,
         ST_Distance(ST_Point(s.shape_lng, s.shape_lat), ip.geom) * 111139 AS distance_m
     FROM "AwsDataCatalog"."{db_name}"."{table_name}" s
     CROSS JOIN input_point ip
-    WHERE ST_Distance(ST_Point(s.shape_lng, s.shape_lat), ip.geom) * 111139 <= {radius_meters}
+    WHERE ST_Distance(ST_Point(s.shape_lng, s.shape_lat), ip.geom) * 111139 <= ?
     ORDER BY distance_m
-    LIMIT {top_n};
+    LIMIT ?;
     """
 
     response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": db_name},
         ResultConfiguration={"OutputLocation": output_location},
+        ExecutionParameters=[str(lon), str(lat), str(radius_meters), str(top_n)],
     )
 
     execution_id = response["QueryExecutionId"]
@@ -132,9 +135,12 @@ def public_parking_nearby(lat: float, lon: float, athena_client, log, radius_met
     table_name = os.getenv("AWS_TABLE_PUB")
     output_location = os.getenv("AWS_ATHENA_OUTPUT")
 
+    # Numeric values are bound via ExecutionParameters (Athena "?" placeholders)
+    # rather than interpolated into the SQL text. Database/table identifiers still
+    # come from env vars via f-string since Athena cannot parameterize identifiers.
     query = f"""
     WITH user_point AS (
-        SELECT to_spherical_geography(ST_Point({lon}, {lat})) AS geom
+        SELECT to_spherical_geography(ST_Point(?, ?)) AS geom
     )
     SELECT
         pg.*,
@@ -149,15 +155,16 @@ def public_parking_nearby(lat: float, lon: float, athena_client, log, radius_met
     WHERE ST_Distance(
             to_spherical_geography(ST_Centroid(ST_GeomFromBinary(pg.geometry))),
             up.geom
-        ) <= {radius_meters}
+        ) <= ?
     ORDER BY distance_m ASC
-    LIMIT {top_n};
+    LIMIT ?;
     """
 
     response = athena_client.start_query_execution(
         QueryString=query,
         QueryExecutionContext={"Database": db_name},
         ResultConfiguration={"OutputLocation": output_location},
+        ExecutionParameters=[str(lon), str(lat), str(radius_meters), str(top_n)],
     )
 
     execution_id = response["QueryExecutionId"]

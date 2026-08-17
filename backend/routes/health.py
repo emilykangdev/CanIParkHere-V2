@@ -4,7 +4,7 @@ System health and service status endpoints
 """
 
 from fastapi import APIRouter, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 
 from models.responses import HealthCheckResponse
@@ -39,7 +39,7 @@ async def health_check(
     response = HealthCheckResponse(
         status="healthy" if is_healthy else "unhealthy",
         services=service_status.status_summary,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         error=None if is_healthy else "One or more critical services are unavailable"
     )
     

@@ -15,6 +15,19 @@ primary_region = "sea"
     port = 443
     handlers = ["tls", "http"]
 
+  # Liveness check only: /api/health always returns HTTP 200, even when a
+  # dependent service (OpenAI/AWS/Firebase) is reported "unhealthy" in the
+  # response body. This check therefore verifies the process is up and
+  # accepting connections, not that all dependencies are healthy.
+  # grace_period is generous because startup initializes AWS/OpenAI/Firebase
+  # clients before the app can serve requests.
+  [[services.http_checks]]
+    interval = "15s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
 [env]
   # optional: if you want a fallback
   PORT = "8080"

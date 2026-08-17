@@ -1,0 +1,14 @@
+# Test-only dependencies. Install with:
+#   venv/bin/python -m pip install -r requirements-dev.txt
+#
+# Note: httpx is intentionally NOT pinned here. It's a transitive dependency
+# of firebase-admin==7.1.0, which hard-pins httpx[http2]==0.28.1 -- that's
+# also the version production actually runs, so tests use it too rather than
+# drifting from what `pip install -r requirements.txt` produces on deploy.
+# starlette==0.27.0 (via fastapi==0.104.1) is incompatible with httpx>=0.28's
+# TestClient (starlette still passes the removed `app=` kwarg to
+# httpx.Client), so tests use httpx.AsyncClient + httpx.ASGITransport
+# directly instead of fastapi.testclient.TestClient. pytest-asyncio drives
+# the resulting async test functions.
+pytest==9.1.1
+pytest-asyncio==1.4.0

@@ -3,6 +3,7 @@ Parking Service - Core Business Logic
 Handles parking analysis, search, and location checking
 """
 
+import asyncio
 import uuid
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -110,7 +111,8 @@ class ParkingService:
             parking_results = []
 
             if self.aws_service and self.aws_service.athena_client:
-                sign_results = get_signs_nearby(
+                sign_results = await asyncio.to_thread(
+                    get_signs_nearby,
                     lat=request.latitude,
                     lon=request.longitude,
                     athena_client=self.aws_service.athena_client,
@@ -121,7 +123,8 @@ class ParkingService:
                 )
 
                 # Search for public parking
-                parking_results = public_parking_nearby(
+                parking_results = await asyncio.to_thread(
+                    public_parking_nearby,
                     lat=request.latitude,
                     lon=request.longitude,
                     athena_client=self.aws_service.athena_client,
@@ -196,7 +199,8 @@ class ParkingService:
             # For now, search for nearby signs and make a determination
             nearby_signs = []
             if self.aws_service and self.aws_service.athena_client:
-                nearby_signs = get_signs_nearby(
+                nearby_signs = await asyncio.to_thread(
+                    get_signs_nearby,
                     lat=request.latitude,
                     lon=request.longitude,
                     athena_client=self.aws_service.athena_client,

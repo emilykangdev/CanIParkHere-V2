@@ -11,14 +11,10 @@
     "build:check": "npm run type-check && npm run build"
   },
   "dependencies": {
-    "@arcjet/inspect": "^1.0.0-beta.10",
-    "@arcjet/next": "^1.0.0-beta.10",
     "@clerk/nextjs": "^6.31.1",
     "@clerk/themes": "^2.4.10",
     "@googlemaps/js-api-loader": "^1.16.10",
-    "@openapitools/openapi-generator-cli": "^2.22.0",
     "@radix-ui/react-slot": "^1.2.3",
-    "@vis.gl/react-google-maps": "^1.5.5",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -28,7 +24,6 @@
     "next": "^15.4.8",
     "next-themes": "^0.4.6",
     "posthog-js": "^1.261.0",
-    "posthog-node": "^5.8.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
@@ -37,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@openapitools/openapi-generator-cli": "^2.22.0",
     "@tailwindcss/postcss": "^4",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^24.3.0",

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import structlog
-from datetime import datetime
+from datetime import datetime, timezone
 
 from models.responses import ErrorResponse
 
@@ -49,7 +49,7 @@ async def parking_analysis_exception_handler(request: Request, exc: ParkingAnaly
             detail=exc.message,
             status_code=422,
             error_type=exc.error_type,
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
 
@@ -64,7 +64,7 @@ async def service_unavailable_exception_handler(request: Request, exc: ServiceUn
             detail=exc.message,
             status_code=503,
             error_type="service_unavailable",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
 
@@ -79,7 +79,7 @@ async def invalid_image_exception_handler(request: Request, exc: InvalidImageErr
             detail=exc.message,
             status_code=400,
             error_type="invalid_image",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
 
@@ -94,7 +94,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             detail=f"Validation error: {str(exc)}",
             status_code=422,
             error_type="validation_error",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
 
@@ -109,7 +109,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             detail=str(exc.detail),
             status_code=exc.status_code,
             error_type="http_error",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
 
@@ -124,6 +124,6 @@ async def general_exception_handler(request: Request, exc: Exception):
             detail="An unexpected error occurred",
             status_code=500,
             error_type="internal_error",
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat()
         ).dict()
     )
