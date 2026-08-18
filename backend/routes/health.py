@@ -17,6 +17,18 @@ log = structlog.get_logger()
 router = APIRouter(prefix="/api", tags=["health"])
 
 
+@router.get("/live")
+async def liveness():
+    """
+    Process liveness only — no dependency probes.
+
+    Fly's http check hits this endpoint; it must stay free of external
+    service calls so a vendor hiccup (AWS/OpenAI/Firebase) can't fail the
+    machine's health check or burn quota every probe interval.
+    """
+    return {"status": "ok"}
+
+
 @router.get("/health", response_model=HealthCheckResponse)
 async def health_check(
     service_status: ServiceStatus = Depends(get_service_status)
