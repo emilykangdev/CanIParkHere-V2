@@ -3,6 +3,8 @@ CanIParkHere API - Restructured Main Application
 Clean architecture with proper separation of concerns
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -53,13 +55,45 @@ structlog.configure(
 
 log = structlog.get_logger()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize services on startup, clean up on shutdown"""
+    log.info("Starting CanIParkHere API...")
+
+    # Initialize service container
+    service_container = get_service_container()
+
+    # Log service status
+    status = service_container.get_service_status()
+    log.info(
+        "Service initialization completed",
+        openai_available=status.openai,
+        aws_s3_available=status.aws_s3,
+        aws_athena_available=status.aws_athena,
+        firebase_available=status.firebase
+    )
+
+    if not status.openai:
+        log.warning("OpenAI service not available - image analysis will be disabled")
+
+    log.info("CanIParkHere API started successfully")
+
+    yield
+
+    log.info("Shutting down CanIParkHere API...")
+    # Add any cleanup logic here
+    log.info("CanIParkHere API shutdown complete")
+
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.title,
     version=settings.version,
     description="AI-powered parking sign analysis and location-based parking search API",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -106,39 +140,6 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.include_router(parking_router)
 app.include_router(health_router)
 app.include_router(auth_router)
-
-# Application lifecycle events
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup"""
-    log.info("Starting CanIParkHere API...")
-    
-    # Initialize service container
-    service_container = get_service_container()
-    
-    # Log service status
-    status = service_container.get_service_status()
-    log.info(
-        "Service initialization completed",
-        openai_available=status.openai,
-        aws_s3_available=status.aws_s3,
-        aws_athena_available=status.aws_athena,
-        firebase_available=status.firebase
-    )
-    
-    if not status.openai:
-        log.warning("OpenAI service not available - image analysis will be disabled")
-    
-    log.info("CanIParkHere API started successfully")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    log.info("Shutting down CanIParkHere API...")
-    # Add any cleanup logic here
-    log.info("CanIParkHere API shutdown complete")
-
 
 # Root endpoint
 @app.get("/")

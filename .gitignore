@@ -22,3 +22,7 @@ data
 # ========================
 .DS_Store
 Thumbs.db
+
+# Local scratch (plans, findings, reviews)
+tmp/
+.ship-with-codex/

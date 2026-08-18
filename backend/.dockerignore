@@ -3,5 +3,8 @@ fly.toml
 __pycache__/
 .envrc
 .venv/
+venv/
+.env
+*.env
 sdot_sign_chunks
 unused_data

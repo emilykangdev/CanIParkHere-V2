@@ -92,21 +92,6 @@ class AWSService:
             log.error(f"Failed to upload to S3: {e}")
             return False
     
-    def execute_athena_query(self, query: str, database: str, output_location: str) -> Optional[str]:
-        """Execute Athena query and return execution ID"""
-        try:
-            response = self.athena_client.start_query_execution(
-                QueryString=query,
-                QueryExecutionContext={'Database': database},
-                ResultConfiguration={'OutputLocation': output_location}
-            )
-            execution_id = response['QueryExecutionId']
-            log.info(f"Started Athena query: {execution_id}")
-            return execution_id
-        except ClientError as e:
-            log.error(f"Failed to execute Athena query: {e}")
-            return None
-    
     def get_athena_query_results(self, execution_id: str) -> Optional[Dict[str, Any]]:
         """Get results from Athena query execution"""
         try:

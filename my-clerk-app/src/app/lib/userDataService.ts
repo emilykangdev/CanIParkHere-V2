@@ -17,9 +17,7 @@ export async function syncUserProfile(clerkUser: unknown) {
   if (!user?.id) return null
 
   // Use the same API base as other backend calls
-  const API_BASE = process.env.NODE_ENV === 'development' 
-    ? process.env.NEXT_PUBLIC_API_URL 
-    : 'http://localhost:8000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const res = await fetch(`${API_BASE}/get-firebase-token`, {
     method: "POST",

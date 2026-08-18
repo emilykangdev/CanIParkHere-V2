@@ -4,7 +4,7 @@ System health and service status endpoints
 """
 
 from fastapi import APIRouter, Depends
-from datetime import datetime
+from datetime import datetime, timezone
 import structlog
 
 from models.responses import HealthCheckResponse
@@ -15,6 +15,18 @@ from config.settings import settings
 log = structlog.get_logger()
 
 router = APIRouter(prefix="/api", tags=["health"])
+
+
+@router.get("/live")
+async def liveness():
+    """
+    Process liveness only — no dependency probes.
+
+    Fly's http check hits this endpoint; it must stay free of external
+    service calls so a vendor hiccup (AWS/OpenAI/Firebase) can't fail the
+    machine's health check or burn quota every probe interval.
+    """
+    return {"status": "ok"}
 
 
 @router.get("/health", response_model=HealthCheckResponse)
@@ -39,7 +51,7 @@ async def health_check(
     response = HealthCheckResponse(
         status="healthy" if is_healthy else "unhealthy",
         services=service_status.status_summary,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         error=None if is_healthy else "One or more critical services are unavailable"
     )
     

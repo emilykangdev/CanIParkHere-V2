@@ -15,6 +15,18 @@ primary_region = "sea"
     port = 443
     handlers = ["tls", "http"]
 
+  # Liveness check only: /api/live returns 200 with zero dependency probes,
+  # so a vendor hiccup (AWS/OpenAI/Firebase) can't fail the machine check or
+  # burn quota every interval. Dependency status lives at /api/health.
+  # grace_period is generous because startup initializes AWS/OpenAI/Firebase
+  # clients before the app can serve requests.
+  [[services.http_checks]]
+    interval = "15s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/api/live"
+    timeout = "5s"
+
 [env]
   # optional: if you want a fallback
   PORT = "8080"
