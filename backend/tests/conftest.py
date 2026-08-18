@@ -4,18 +4,12 @@ Shared pytest fixtures.
 These tests run fully offline: no real OpenAI/AWS/Firebase clients are ever
 constructed and no network calls are made.
 
-Note on the HTTP client: this repo pins fastapi==0.104.1 / starlette==0.27.0
-(matching production), but firebase-admin==7.1.0 hard-pins
-httpx[http2]==0.28.1 (also what production actually runs). starlette 0.27's
-`starlette.testclient.TestClient` is incompatible with httpx>=0.28 (it still
-passes a removed `app=` kwarg straight into `httpx.Client.__init__`), so
-`fastapi.testclient.TestClient` cannot be used here without either drifting
-the test env's httpx version away from what production installs, or bumping
-fastapi/starlette (out of scope for this audit). Instead, tests drive the
-app directly via `httpx.AsyncClient` + `httpx.ASGITransport`, which is the
-same underlying mechanism TestClient itself uses, just without the broken
-compatibility shim. `pytest-asyncio` (asyncio_mode=auto, see pytest.ini)
-runs the resulting async test functions.
+Note on the HTTP client: tests drive the app directly via
+`httpx.AsyncClient` + `httpx.ASGITransport` — the same underlying mechanism
+`fastapi.testclient.TestClient` wraps — so the suite has no dependency on
+TestClient/httpx compatibility across fastapi/starlette upgrades.
+`pytest-asyncio` (asyncio_mode=auto, see pytest.ini) runs the resulting
+async test functions.
 
 The `client` fixture never enters an app "lifespan" context, so
 main.py's lifespan (which calls `core.dependencies.get_service_container()`
